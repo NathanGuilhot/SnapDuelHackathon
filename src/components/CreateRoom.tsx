@@ -37,7 +37,7 @@ export default function CreateRoom({
   onJoinWithCode,
 }: CreateRoomProps) {
   const { getSandboxPeerToken } = useSandbox()
-  const { joinRoom, leaveRoom, peerStatus } = useConnection()
+  const { joinRoom, peerStatus } = useConnection()
   const { remotePeers } = usePeers()
 
   const [roomCode, setRoomCode] = useState<string | null>(null)
@@ -102,7 +102,7 @@ export default function CreateRoom({
     }
 
     create()
-    return () => { cancelled = true; leaveRoom() }
+    return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate QR code when shareable URL is available

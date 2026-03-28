@@ -9,7 +9,7 @@ import {
   VStack,
   HStack,
 } from "@chakra-ui/react"
-import { usePeers } from "@fishjam-cloud/react-client"
+import { useConnection, usePeers } from "@fishjam-cloud/react-client"
 import CameraCapture from "./components/CameraCapture"
 import CardBattle from "./components/Card"
 import BattleArena from "./components/BattleArena"
@@ -74,6 +74,7 @@ function App() {
 
   // Track if opponent was ever connected (to detect disconnect vs never-connected)
   const hadOpponent = useRef(false)
+  const { leaveRoom } = useConnection()
   const { remotePeers } = usePeers<PeerMetadata>()
 
   // Game protocol — data channel messaging
@@ -128,14 +129,22 @@ function App() {
     }
   }, [gameChannel.ready, gameChannel.localPeerId, isSolo]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Track opponent connection for disconnect detection
+  // Track opponent connection for disconnect detection (debounced to tolerate brief reconnects)
   useEffect(() => {
+    let disconnectTimer: ReturnType<typeof setTimeout> | undefined
+
     if (remotePeers.length > 0) {
       hadOpponent.current = true
       setDisconnected(false)
     } else if (hadOpponent.current && screen !== "lobby" && screen !== "join" && !isSolo) {
-      setDisconnected(true)
-      snapLog("OPPONENT_DISCONNECTED")
+      disconnectTimer = setTimeout(() => {
+        setDisconnected(true)
+        snapLog("OPPONENT_DISCONNECTED")
+      }, 3000)
+    }
+
+    return () => {
+      if (disconnectTimer) clearTimeout(disconnectTimer)
     }
   }, [remotePeers.length, screen, isSolo])
 
@@ -339,6 +348,9 @@ function App() {
   }
 
   function handlePlayAgain() {
+    // Leave Fishjam room before resetting
+    leaveRoom()
+
     // Clean up preview URL
     if (previewUrl) URL.revokeObjectURL(previewUrl)
 

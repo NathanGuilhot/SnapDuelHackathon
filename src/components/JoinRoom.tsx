@@ -49,6 +49,8 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
   const [joined, setJoined] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const joinAttempted = useRef(false)
+  const peerStatusRef = useRef(peerStatus)
+  peerStatusRef.current = peerStatus
 
   const codeValid = VALID_CODE.test(roomCode)
 
@@ -73,25 +75,27 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
           ? (err.message || "Connection failed — check your network and try again")
           : (err != null ? String(err) : "Connection failed — check your network and try again")
         setError(msg)
-        snapLog("JOIN_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus })
+        snapLog("JOIN_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus: peerStatusRef.current })
       } finally {
         setJoining(false)
       }
     },
-    [getSandboxPeerToken, joinRoom, leaveRoom, playerName, peerStatus],
+    [getSandboxPeerToken, joinRoom, leaveRoom, playerName],
   )
+
+  const doJoinRef = useRef(doJoin)
+  doJoinRef.current = doJoin
 
   // Auto-join when initialCode is provided
   useEffect(() => {
     if (initialCode && VALID_CODE.test(initialCode) && !joinAttempted.current) {
       joinAttempted.current = true
-      doJoin(initialCode)
+      doJoinRef.current(initialCode)
     }
     return () => {
       joinAttempted.current = false
-      leaveRoom()
     }
-  }, [initialCode, doJoin, leaveRoom])
+  }, [initialCode])
 
   // Watch for host presence
   useEffect(() => {
