@@ -1,9 +1,10 @@
 import NiceModal from "@ebay/nice-modal-react"
-import { Box, Button, SimpleGrid, Text, VStack } from "@chakra-ui/react"
+import { Box, Button, SimpleGrid, Text, VStack, useBreakpointValue } from "@chakra-ui/react"
 import { ArrowLeft } from "lucide-react"
 import CardBattle from "./Card"
 import CardPreviewModal from "./CardPreviewModal"
 import type { Card } from "../../shared/types"
+import type { KeyboardEvent } from "react"
 
 interface MyCardsProps {
   cards: Card[]
@@ -11,8 +12,22 @@ interface MyCardsProps {
 }
 
 export default function MyCards({ cards, onBack }: MyCardsProps) {
+  const cardW = useBreakpointValue({ base: 132, md: 154 }) ?? 132
+  const cardH = Math.round((220 / 154) * cardW)
+
+  function openPreview(card: Card) {
+    NiceModal.show(CardPreviewModal, { card })
+  }
+
+  function cardKeyDown(e: KeyboardEvent, card: Card) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      openPreview(card)
+    }
+  }
+
   return (
-    <VStack gap="5" align="center" w="full" maxW="700px">
+    <VStack gap="5" align="center" w="full" maxW={{ base: "100%", md: "700px" }} px={{ base: 2, md: 0 }}>
       <Button
         alignSelf="flex-start"
         size="sm"
@@ -47,14 +62,20 @@ export default function MyCards({ cards, onBack }: MyCardsProps) {
           {cards.map((card) => (
             <Box
               key={card.id}
-              w="154px"
-              h="220px"
+              as="button"
+              w={`${cardW}px`}
+              h={`${cardH}px`}
+              p="0"
+              border="none"
+              bg="transparent"
               position="relative"
               overflow="visible"
               cursor="pointer"
-              onClick={() => NiceModal.show(CardPreviewModal, { card })}
+              aria-label={`Open ${card.name}`}
+              onClick={() => openPreview(card)}
+              onKeyDown={(e) => cardKeyDown(e, card)}
             >
-              <CardBattle card={card} width={154} height={220} />
+              <CardBattle card={card} width={cardW} height={cardH} />
             </Box>
           ))}
         </SimpleGrid>

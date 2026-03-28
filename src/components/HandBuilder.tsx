@@ -1,13 +1,15 @@
-import { useState } from "react"
+import { useState, type KeyboardEvent } from "react"
 import {
   Box,
   Button,
   HStack,
+  IconButton,
   Image,
   SimpleGrid,
   Spinner,
   Text,
   VStack,
+  useBreakpointValue,
 } from "@chakra-ui/react"
 import NiceModal from "@ebay/nice-modal-react"
 import { X, Plus, Camera, BookOpen } from "lucide-react"
@@ -17,6 +19,16 @@ import CardPreviewModal from "./CardPreviewModal"
 import { ErrorTap } from "./ErrorModal"
 import type { Card } from "../../shared/types"
 import { HAND_SIZE } from "../../shared/constants"
+
+function cardPreviewKeyDown(
+  e: KeyboardEvent,
+  action: () => void,
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault()
+    action()
+  }
+}
 
 type SubView = "default" | "camera" | "collection"
 
@@ -39,9 +51,6 @@ interface HandBuilderProps {
   onReset: () => void
 }
 
-const SLOT_W = 116
-const SLOT_H = 166
-
 export default function HandBuilder({
   hand,
   collection,
@@ -61,6 +70,8 @@ export default function HandBuilder({
   onReset,
 }: HandBuilderProps) {
   const [subView, setSubView] = useState<SubView>("default")
+  const slotW = useBreakpointValue({ base: 92, sm: 100, md: 116 }) ?? 92
+  const slotH = Math.round((166 / 116) * slotW)
   const handFull = hand.length >= HAND_SIZE
   const handIds = new Set(hand.map((c) => c.id))
   const availableCollection = collection.filter((c) => !handIds.has(c.id))
@@ -173,21 +184,34 @@ export default function HandBuilder({
             {availableCollection.map((card) => (
               <Box
                 key={card.id}
-                w={`${SLOT_W}px`}
-                h={`${SLOT_H}px`}
+                as="button"
+                w={`${slotW}px`}
+                h={`${slotH}px`}
+                p="0"
+                border="none"
+                bg="transparent"
                 cursor="pointer"
                 transition="transform 0.2s"
                 _hover={{ transform: "translateY(-4px)" }}
+                aria-label={`Open preview: ${card.name}`}
                 onClick={() =>
                   NiceModal.show(CardPreviewModal, {
                     card,
                     onAddToHand: () => handlePickFromCollection(card),
                   })
                 }
+                onKeyDown={(e) =>
+                  cardPreviewKeyDown(e, () =>
+                    NiceModal.show(CardPreviewModal, {
+                      card,
+                      onAddToHand: () => handlePickFromCollection(card),
+                    }),
+                  )
+                }
                 borderRadius="12px"
                 overflow="visible"
               >
-                <CardBattle card={card} width={SLOT_W} height={SLOT_H} />
+                <CardBattle card={card} width={slotW} height={slotH} />
               </Box>
             ))}
           </SimpleGrid>
@@ -198,7 +222,7 @@ export default function HandBuilder({
 
   // Default view: hand slots + action buttons
   return (
-    <VStack gap="5" align="center" w="full" maxW="420px" p="4">
+    <VStack gap="5" align="center" w="full" maxW={{ base: "100%", sm: "420px" }} p={{ base: 3, sm: 4 }}>
       {/* Header */}
       <VStack gap="1">
         <Text
@@ -213,19 +237,29 @@ export default function HandBuilder({
         <Text color="fg.muted" fontSize="sm">
           {hand.length}/{HAND_SIZE} cards
         </Text>
+        {!handReady && (
+          <Text color="fg.muted" fontSize="xs" maxW="320px" lineHeight="1.5">
+            Fill your hand, then confirm to battle.
+          </Text>
+        )}
       </VStack>
 
       {/* Hand slots */}
-      <HStack gap="3" justify="center">
+      <HStack gap="3" justify="center" flexWrap="wrap" rowGap="3">
         {Array.from({ length: HAND_SIZE }, (_, i) => {
           const card = hand[i]
           if (card) {
             return (
               <Box key={card.id} position="relative">
                 <Box
+                  as="button"
+                  p="0"
+                  border="none"
+                  bg="transparent"
                   borderRadius="12px"
                   overflow="visible"
                   cursor="pointer"
+                  aria-label={`View ${card.name}`}
                   onClick={() =>
                     NiceModal.show(CardPreviewModal, {
                       card,
@@ -233,39 +267,49 @@ export default function HandBuilder({
                       aiGenerating: latestCard?.id === card.id ? aiGenerating : false,
                     })
                   }
+                  onKeyDown={(e) =>
+                    cardPreviewKeyDown(e, () =>
+                      NiceModal.show(CardPreviewModal, {
+                        card,
+                        aiImageUrl: latestCard?.id === card.id ? aiImageUrl : undefined,
+                        aiGenerating: latestCard?.id === card.id ? aiGenerating : false,
+                      }),
+                    )
+                  }
                 >
                   <CardBattle
                     card={card}
-                    width={SLOT_W}
-                    height={SLOT_H}
+                    width={slotW}
+                    height={slotH}
                     aiImageUrl={latestCard?.id === card.id ? aiImageUrl : undefined}
                     aiGenerating={latestCard?.id === card.id ? aiGenerating : false}
                     animate={latestCard?.id === card.id}
                   />
                 </Box>
                 {!handReady && (
-                  <Box
+                  <IconButton
+                    aria-label={`Remove ${card.name} from hand`}
                     position="absolute"
-                    top="-6px"
-                    right="-6px"
-                    w="24px"
-                    h="24px"
+                    top="-8px"
+                    right="-8px"
+                    size="sm"
+                    variant="solid"
+                    colorPalette="red"
+                    minW="44px"
+                    minH="44px"
                     borderRadius="full"
                     bg="rgba(224,82,82,0.9)"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
+                    color="white"
+                    border="2px solid rgba(255,255,255,0.2)"
+                    zIndex={10}
                     onClick={(e) => {
                       e.stopPropagation()
                       onRemoveFromHand(i)
                     }}
-                    zIndex={10}
-                    border="2px solid rgba(255,255,255,0.2)"
                     _hover={{ bg: "rgba(224,82,82,1)" }}
                   >
-                    <X size={12} color="white" />
-                  </Box>
+                    <X size={16} color="white" />
+                  </IconButton>
                 )}
               </Box>
             )
@@ -273,8 +317,8 @@ export default function HandBuilder({
           return (
             <Box
               key={`empty-${i}`}
-              w={`${SLOT_W}px`}
-              h={`${SLOT_H}px`}
+              w={`${slotW}px`}
+              h={`${slotH}px`}
               borderRadius="12px"
               border="2px dashed"
               borderColor="border"
@@ -282,6 +326,7 @@ export default function HandBuilder({
               alignItems="center"
               justifyContent="center"
               opacity={0.5}
+              aria-hidden
             >
               <Plus size={24} color="#6b8a80" />
             </Box>
@@ -335,10 +380,10 @@ export default function HandBuilder({
       {handReady && (
         <HStack gap="3">
           <Spinner size="sm" color="accent" />
-          <Text color="fg.muted" fontWeight="500" fontSize="lg">
+          <Text color="fg.muted" fontWeight="500" fontSize="lg" textAlign="center" px="2">
             {opponentReady
               ? "Both ready! Starting battle..."
-              : "Waiting for opponent\u2019s card..."}
+              : "Waiting for opponent\u2019s hand..."}
           </Text>
         </HStack>
       )}

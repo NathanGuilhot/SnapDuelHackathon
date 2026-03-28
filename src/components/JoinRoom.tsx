@@ -96,7 +96,7 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
       joinAttempted.current = false
       leaveRoomRef.current()
     }
-  }, [initialCode]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialCode])
 
   // Watch for host presence
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
   // Auto-join mode: show minimal UI while connecting
   if (initialCode) {
     return (
-      <VStack gap="6" p="5" align="center" w="full" maxW="400px">
+      <VStack gap="6" p={{ base: "4", sm: "5" }} align="center" w="full" maxW={{ base: "100%", sm: "400px" }}>
         <VStack gap="1">
           <Text fontSize="sm" color="fg.muted" textTransform="uppercase" letterSpacing="0.1em">
             Joining Room
@@ -163,12 +163,17 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
           </VStack>
         ) : joined && remotePeers.length === 0 ? (
           <VStack gap="4">
-            <HStack gap="3">
-              <Spinner size="sm" color="accent" />
-              <Text color="fg.muted" fontWeight="500" fontSize="lg">
-                Waiting for host...
+            <VStack gap="2" w="full" maxW="340px">
+              <HStack gap="3" justify="center">
+                <Spinner size="sm" color="accent" />
+                <Text color="fg.muted" fontWeight="500" fontSize="lg">
+                  Waiting for host...
+                </Text>
+              </HStack>
+              <Text fontSize="sm" color="fg.muted" textAlign="center" lineHeight="1.5">
+                Sit tight — you'll advance when the host is ready.
               </Text>
-            </HStack>
+            </VStack>
             {onBackToLobby && (
               <Button
                 size="lg"
@@ -196,12 +201,15 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
 
   // Manual join mode: code input + join button
   return (
-    <VStack gap="6" p="5" align="center" w="full" maxW="400px">
+    <VStack gap="6" p={{ base: "4", sm: "5" }} align="center" w="full" maxW={{ base: "100%", sm: "400px" }}>
       <Box as="form" onSubmit={handleSubmit} w="full">
         <VStack gap="5" w="full">
           <VStack gap="1" w="full">
             <Text fontSize="sm" color="fg.muted" textTransform="uppercase" letterSpacing="0.1em">
               Room Code
+            </Text>
+            <Text fontSize="xs" color="fg.muted" textAlign="center">
+              Enter the code from the host.
             </Text>
             <Input
               value={roomCode}
@@ -301,12 +309,17 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
       )}
 
       {joined && remotePeers.length === 0 && (
-        <HStack gap="3" mt="2">
-          <Spinner size="sm" color="accent" />
-          <Text color="fg.muted" fontWeight="500" fontSize="lg">
-            Waiting for host...
+        <VStack gap="2" mt="2" w="full" maxW="340px">
+          <HStack gap="3" justify="center">
+            <Spinner size="sm" color="accent" />
+            <Text color="fg.muted" fontWeight="500" fontSize="lg">
+              Waiting for host...
+            </Text>
+          </HStack>
+          <Text fontSize="sm" color="fg.muted" textAlign="center" lineHeight="1.5">
+            Sit tight — you'll advance when the host is ready.
           </Text>
-        </HStack>
+        </VStack>
       )}
     </VStack>
   )

@@ -31,23 +31,24 @@ export default function ReactionToast({ reaction }: ReactionToastProps) {
 
     // Clear any pending timers
     if (timerRef.current) clearTimeout(timerRef.current)
-
-    setCurrent(reaction.reactionId)
-    setPhase("entering")
-
-    // entering -> visible
     timerRef.current = setTimeout(() => {
-      setPhase("visible")
-      // visible -> exiting
+      setCurrent(reaction.reactionId)
+      setPhase("entering")
+
+      // entering -> visible
       timerRef.current = setTimeout(() => {
-        setPhase("exiting")
-        // exiting -> hidden
+        setPhase("visible")
+        // visible -> exiting
         timerRef.current = setTimeout(() => {
-          setPhase("hidden")
-          setCurrent(null)
-        }, 500)
-      }, 2200)
-    }, 300)
+          setPhase("exiting")
+          // exiting -> hidden
+          timerRef.current = setTimeout(() => {
+            setPhase("hidden")
+            setCurrent(null)
+          }, 500)
+        }, 2200)
+      }, 300)
+    }, 0)
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)

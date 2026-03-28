@@ -102,7 +102,7 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
 
 
   return (
-    <VStack gap="6" p="5" w="full" align="center">
+    <VStack gap="6" p={{ base: "4", sm: "5" }} w="full" align="center" maxW={{ base: "100%", sm: "420px" }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -213,15 +213,16 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
             <Text color="fg.heading" fontSize="lg" fontWeight="600">
               Forge Your Champion
             </Text>
-            <Text color="fg.muted" fontSize="sm" maxW="280px">
-              Photograph any object to forge it into a battle card
+            <Text color="fg.muted" fontSize="sm" maxW="280px" textAlign="center" lineHeight="1.5">
+              Take a photo or upload one, then confirm it to turn it into a battle card.
             </Text>
           </VStack>
           <Button
             size="lg"
             colorPalette="orange"
             onClick={handleTakePhoto}
-            px="8"
+            w="full"
+            maxW="280px"
           >
             Take Photo
           </Button>

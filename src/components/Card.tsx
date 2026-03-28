@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@chakra-ui/react"
 import type { Card, Element } from "../../shared/types"
+import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion"
 
 /* ── Element theming ────────────────────────────────────────────── */
 
@@ -164,6 +165,7 @@ interface CardBattleProps {
 }
 
 export default function CardBattle({ card, aiImageUrl, aiGenerating, width, height, animate = false }: CardBattleProps) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   const theme = ELEMENT_THEMES[card.element]
   const elementSrc = ELEMENT_IMAGE[card.element]
 
@@ -205,7 +207,7 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
         style={
           {
             background: theme.bg,
-            ...(animate
+            ...(animate && !prefersReducedMotion
               ? {
                   animation:
                     "cardSummonScale 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
@@ -215,7 +217,7 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
         }
       >
         {/* Brightness flash overlay */}
-        {animate && (
+        {animate && !prefersReducedMotion && (
           <Box
             position="absolute"
             inset="0"
@@ -313,7 +315,9 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
                   display: "block",
                   position: "absolute",
                   inset: 0,
-                  animation: "aiImageFadeIn 1200ms ease-out forwards",
+                  animation: prefersReducedMotion
+                    ? undefined
+                    : "aiImageFadeIn 1200ms ease-out forwards",
                 }}
               />
             )}
@@ -333,7 +337,9 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
                     style={{
                       background:
                         "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
-                      animation: "aiShimmer 1.8s ease-in-out infinite",
+                      animation: prefersReducedMotion
+                        ? undefined
+                        : "aiShimmer 1.8s ease-in-out infinite",
                     }}
                   />
                 </Box>
@@ -358,7 +364,9 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
                     borderRadius="full"
                     bg={theme.border}
                     style={{
-                      animation: "dotPulse 1.5s ease-in-out infinite",
+                      animation: prefersReducedMotion
+                        ? undefined
+                        : "dotPulse 1.5s ease-in-out infinite",
                     }}
                   />
                   <Text

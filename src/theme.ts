@@ -26,8 +26,8 @@ const config = defineConfig({
       minHeight: "100svh",
     },
     "#root": {
-      width: "1126px",
-      maxWidth: "100%",
+      width: "100%",
+      maxWidth: "min(1126px, 100%)",
       margin: "0 auto",
       textAlign: "center",
       minHeight: "100svh",

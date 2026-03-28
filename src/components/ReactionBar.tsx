@@ -1,6 +1,6 @@
 import { Box, HStack } from "@chakra-ui/react"
 import type { ReactionId } from "../../shared/types"
-import { REACTIONS } from "../lib/reactions"
+import { REACTION_DATA, REACTIONS } from "../lib/reactions"
 
 interface ReactionBarProps {
   onSend: (id: ReactionId) => void
@@ -29,9 +29,12 @@ export default function ReactionBar({ onSend, cooldown }: ReactionBarProps) {
         <Box
           key={r.id}
           as="button"
+          aria-label={REACTION_DATA[r.id].label}
           fontSize="xl"
-          w="36px"
-          h="36px"
+          minW="44px"
+          minH="44px"
+          w="44px"
+          h="44px"
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -40,7 +43,11 @@ export default function ReactionBar({ onSend, cooldown }: ReactionBarProps) {
           transition="transform 0.15s, background 0.15s"
           _hover={cooldown ? undefined : { bg: "rgba(242,116,5,0.2)", transform: "scale(1.2)" }}
           _active={cooldown ? undefined : { transform: "scale(0.9)" }}
-          onClick={() => !cooldown && onSend(r.id)}
+          onClick={() => {
+            if (cooldown) return
+            onSend(r.id)
+          }}
+          aria-disabled={cooldown}
           pointerEvents={cooldown ? "none" : "auto"}
           lineHeight="1"
           userSelect="none"

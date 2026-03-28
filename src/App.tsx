@@ -13,6 +13,7 @@ import CreateRoom from "./components/CreateRoom"
 import MyCards from "./components/MyCards"
 import JoinRoom from "./components/JoinRoom"
 import HandBuilder from "./components/HandBuilder"
+import DisconnectDialog from "./components/DisconnectDialog"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { saveHand, loadHand, clearHand } from "./lib/handStorage"
 import { saveToCollection, updateCollectionCard, loadCollection } from "./lib/collectionStorage"
@@ -21,6 +22,7 @@ import snapDuelLogo from "./assets/snapduellogo.png"
 import { snapLog } from "../shared/debug.ts"
 import { useGameChannel } from "./hooks/useGameChannel"
 import { useAiImage } from "./hooks/useAiImage"
+import { useOpponentDisconnect } from "./hooks/useOpponentDisconnect"
 import { resolveBattle } from "../shared/battle.ts"
 import { createMatchState, applyRoundResult, isMatchOver, getMatchWinner, getAvailableIndices } from "../shared/match.ts"
 import type { Card, GameMessage, MatchState, PeerMetadata, PresenceMessage, ReactionId, RoundResult } from "../shared/types.ts"
@@ -40,6 +42,10 @@ function extractRoomCode(): string | null {
   const path = window.location.pathname.replace(/^\//, "")
   if (/^[A-HJ-NP-Z]{4}$/.test(path)) return path
   return null
+}
+
+function clearRoomPath() {
+  window.history.replaceState({}, "", "/")
 }
 
 function App() {
@@ -67,7 +73,6 @@ function App() {
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
   const [matchWinner, setMatchWinner] = useState<"A" | "B" | "draw" | null>(null)
   const [matchState, setMatchState] = useState<MatchState | null>(null)
-  const [disconnected, setDisconnected] = useState(false)
 
   const [incomingReaction, setIncomingReaction] = useState<{ reactionId: ReactionId; ts: number } | null>(null)
   const [reactionCooldown, setReactionCooldown] = useState(false)
@@ -77,9 +82,22 @@ function App() {
 
   const { aiImageUrl, aiImageState } = useAiImage(card?.id ?? null)
 
-  const hadOpponent = useRef(false)
   const { leaveRoom } = useConnection()
   const { remotePeers } = usePeers<PeerMetadata>()
+  const isInMatch =
+    screen !== "lobby" && screen !== "join" && screen !== "my-cards" && !isSolo
+  const { disconnected, resetDisconnect } = useOpponentDisconnect(
+    remotePeers.length,
+    isInMatch,
+  )
+  const isBattleScreen =
+    screen === "picking" || screen === "reveal" || screen === "round-summary" || screen === "match-end"
+
+  const resetRoundView = useCallback(() => {
+    setSelectedIndex(null)
+    setOpponentPickedIndex(null)
+    setRoundResult(null)
+  }, [])
 
   const gameChannel = useGameChannel({
     isHost,
@@ -112,9 +130,7 @@ function App() {
           scoreA: msg.scoreA,
           scoreB: msg.scoreB,
         } : prev)
-        setSelectedIndex(null)
-        setOpponentPickedIndex(null)
-        setRoundResult(null)
+        resetRoundView()
         setScreen("round-summary")
       },
 
@@ -140,7 +156,7 @@ function App() {
         setIncomingReaction({ reactionId: msg.reactionId, ts: Date.now() })
       },
 
-      SHUFFLE: (_msg: GameMessage & { type: "SHUFFLE" }) => {
+      SHUFFLE: () => {
         setOpponentShuffled((prev) => prev + 1)
       },
     },
@@ -164,25 +180,6 @@ function App() {
       })
     }
   }, [gameChannel.ready, gameChannel.localPeerId, isSolo]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Track opponent connection for disconnect detection (debounced to tolerate brief reconnects)
-  useEffect(() => {
-    let disconnectTimer: ReturnType<typeof setTimeout> | undefined
-
-    if (remotePeers.length > 0) {
-      hadOpponent.current = true
-      setDisconnected(false)
-    } else if (hadOpponent.current && screen !== "lobby" && screen !== "join" && !isSolo) {
-      disconnectTimer = setTimeout(() => {
-        setDisconnected(true)
-        snapLog("OPPONENT_DISCONNECTED")
-      }, 3000)
-    }
-
-    return () => {
-      if (disconnectTimer) clearTimeout(disconnectTimer)
-    }
-  }, [remotePeers.length, screen, isSolo])
 
   // Swap card image when AI illustration arrives
   useEffect(() => {
@@ -272,15 +269,13 @@ function App() {
             scoreB: newState.scoreB,
           })
         }
-        setSelectedIndex(null)
-        setOpponentPickedIndex(null)
-        setRoundResult(null)
+        resetRoundView()
         setScreen("round-summary")
       }
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [isHost, isSolo, selectedIndex, opponentPickedIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isHost, isSolo, selectedIndex, opponentPickedIndex, resetRoundView]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Round summary → next picking auto-advance
   useEffect(() => {
@@ -293,7 +288,7 @@ function App() {
 
   const handleOpponentJoined = useCallback(() => {
     setScreen("card-building")
-    window.history.replaceState({}, "", "/")
+    clearRoomPath()
     snapLog("OPPONENT_JOINED_TRANSITION")
   }, [])
 
@@ -305,7 +300,7 @@ function App() {
 
   const handleBothConnected = useCallback(() => {
     setScreen("card-building")
-    window.history.replaceState({}, "", "/")
+    clearRoomPath()
     snapLog("BOTH_CONNECTED_TRANSITION", { isHost })
   }, [isHost])
 
@@ -314,7 +309,7 @@ function App() {
     setJoinCode(null)
     setIsHost(true)
     setScreen("lobby")
-    window.history.replaceState({}, "", "/")
+    clearRoomPath()
     snapLog("BACK_TO_LOBBY")
   }, [leaveRoom])
 
@@ -528,8 +523,7 @@ function App() {
   function handlePlayAgain() {
     leaveRoom()
     resetMatchState()
-    setDisconnected(false)
-    hadOpponent.current = false
+    resetDisconnect()
     if (isSolo) setIsSolo(false)
     setScreen("lobby")
     snapLog("PLAY_AGAIN")
@@ -555,9 +549,6 @@ function App() {
     }
   }
 
-  const isBattleScreen =
-    screen === "picking" || screen === "reveal" || screen === "round-summary" || screen === "match-end"
-
   const myUsedIndices = matchState?.usedIndicesA ?? []
 
   return (
@@ -572,42 +563,7 @@ function App() {
       p={{ base: "6 4", lg: "8 5" }}
       gap="4"
     >
-      {/* Disconnect overlay */}
-      {disconnected && (
-        <Box
-          position="fixed"
-          inset="0"
-          bg="rgba(0,0,0,0.8)"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          zIndex={100}
-          backdropFilter="blur(4px)"
-        >
-          <VStack gap="4" p="8" maxW="320px">
-            <Text
-              fontSize="2xl"
-              fontWeight="700"
-              fontFamily="'Cinzel', Georgia, serif"
-              color="#e05252"
-              textShadow="0 0 20px rgba(224,82,82,0.5)"
-            >
-              Opponent Disconnected
-            </Text>
-            <Text color="fg.muted" textAlign="center">
-              Your opponent has left the battle.
-            </Text>
-            <Button
-              size="lg"
-              colorPalette="orange"
-              w="full"
-              onClick={handlePlayAgain}
-            >
-              Back to Lobby
-            </Button>
-          </VStack>
-        </Box>
-      )}
+      <DisconnectDialog open={disconnected} onDismiss={handlePlayAgain} />
 
       {/* Header — hide during battle for more space */}
       {!isBattleScreen && (
@@ -634,10 +590,14 @@ function App() {
       {screen === "lobby" && (
         <>
           <HStack
-            position="absolute"
-            top={{ base: "4", lg: "6" }}
-            right={{ base: "4", lg: "6" }}
+            position={{ base: "static", md: "absolute" }}
+            top={{ md: "6" }}
+            right={{ md: "6" }}
             gap="2"
+            flexWrap="wrap"
+            justify={{ base: "center", md: "flex-end" }}
+            w={{ base: "full", md: "auto" }}
+            mb={{ base: "2", md: "0" }}
           >
             {collection.length > 0 && (
               <Button

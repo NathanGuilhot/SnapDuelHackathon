@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Box, HStack, Text } from "@chakra-ui/react"
 import CardBack from "./CardBack"
 import { MAX_CARD_USES } from "../../shared/constants"
+import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion"
 
 const SHUFFLE_KEYFRAMES = `
 @keyframes shuffleGather {
@@ -32,6 +33,7 @@ export default function OpponentCardBacks({
   opponentPicked,
   shuffleCounter,
 }: OpponentCardBacksProps) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   const useCounts = new Map<number, number>()
   for (const idx of usedIndices) {
     useCounts.set(idx, (useCounts.get(idx) ?? 0) + 1)
@@ -45,16 +47,16 @@ export default function OpponentCardBacks({
   const shuffleRotations = useRef<number[]>([])
 
   useEffect(() => {
-    if (shuffleCounter > prevCounter.current) {
-      prevCounter.current = shuffleCounter
-      shuffleRotations.current = Array.from({ length: cardCount }, () =>
-        (Math.random() - 0.5) * 12
-      )
-      setIsShuffling(true)
-      const timer = setTimeout(() => setIsShuffling(false), 700)
-      return () => clearTimeout(timer)
-    }
-  }, [shuffleCounter, cardCount])
+    if (shuffleCounter <= prevCounter.current) return
+    prevCounter.current = shuffleCounter
+    shuffleRotations.current = Array.from({ length: cardCount }, () =>
+      (Math.random() - 0.5) * 12,
+    )
+    if (prefersReducedMotion) return
+    setIsShuffling(true)
+    const timer = setTimeout(() => setIsShuffling(false), 700)
+    return () => clearTimeout(timer)
+  }, [shuffleCounter, cardCount, prefersReducedMotion])
 
   if (activeIndices.length === 0) return null
 

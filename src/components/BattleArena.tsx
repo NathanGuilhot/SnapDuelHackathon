@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Box, Button, HStack, Image, SimpleGrid, Spinner, Text, VStack } from "@chakra-ui/react"
+import { Box, Button, HStack, Image, SimpleGrid, Spinner, Text, VStack, useBreakpointValue } from "@chakra-ui/react"
 import cardBackSrc from "../assets/cardback.png"
 import CardBattle from "./Card"
 import ReactionBar from "./ReactionBar"
@@ -7,6 +7,7 @@ import ReactionToast from "./ReactionToast"
 import OpponentCardBacks from "./OpponentCardBacks"
 import type { Card, ReactionId, RoundResult, ElementAdvantage } from "../../shared/types"
 import { MAX_CARD_USES } from "../../shared/constants"
+import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion"
 
 /* ── Props ─────────────────────────────────────────────────────── */
 
@@ -153,6 +154,7 @@ function CardSlot({
   cardWidth: number
   cardHeight: number
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   const hpFraction = remainingHp != null ? Math.max(0, remainingHp / card.hp) : 1
   const ratio = cardWidth / 280
   const hpBarW = `${Math.round(180 * ratio)}px`
@@ -162,9 +164,13 @@ function CardSlot({
     <Box
       position="relative"
       style={{
-        animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both`,
-        animationDelay: delay,
-        ...(isLoser ? { animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both, loserDim 800ms ease-out forwards` } : {}),
+        animation: prefersReducedMotion
+          ? undefined
+          : `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both`,
+        animationDelay: prefersReducedMotion ? undefined : delay,
+        ...(isLoser && !prefersReducedMotion
+          ? { animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both, loserDim 800ms ease-out forwards` }
+          : {}),
         ...(isWinner ? { border: "3px solid #ffd700" } : {}),
       }}
       borderRadius={`${Math.max(10, Math.round(18 * ratio))}px`}
@@ -184,9 +190,11 @@ function CardSlot({
           color="#ff4444"
           textShadow="0 2px 4px rgba(0,0,0,0.8)"
           style={{
-            animation: "damageFloat 1.5s ease-out forwards",
-            animationDelay: "0.8s",
-            opacity: 0,
+            animation: prefersReducedMotion
+              ? undefined
+              : "damageFloat 1.5s ease-out forwards",
+            animationDelay: prefersReducedMotion ? undefined : "0.8s",
+            opacity: prefersReducedMotion ? 1 : 0,
           }}
           pointerEvents="none"
           zIndex={20}
@@ -217,9 +225,11 @@ function CardSlot({
             style={{
               "--hp-from": "1",
               "--hp-to": String(hpFraction),
-              animation: "hpDrain 1.2s ease-out forwards",
-              animationDelay: "0.6s",
-              transform: "scaleX(1)",
+              animation: prefersReducedMotion
+                ? undefined
+                : "hpDrain 1.2s ease-out forwards",
+              animationDelay: prefersReducedMotion ? undefined : "0.6s",
+              transform: prefersReducedMotion ? `scaleX(${hpFraction})` : "scaleX(1)",
             } as React.CSSProperties}
           />
         </Box>
@@ -244,6 +254,7 @@ function FlipCard({
   cardWidth: number
   cardHeight: number
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   const ratio = cardWidth / 280
   const borderRadius = `${Math.max(10, Math.round(16 * ratio))}px`
 
@@ -257,8 +268,8 @@ function FlipCard({
         style={{
           transformStyle: "preserve-3d",
           WebkitTransformStyle: "preserve-3d",
-          transition: "transform 800ms ease-in-out",
-          transitionDelay: delay,
+          transition: prefersReducedMotion ? undefined : "transform 800ms ease-in-out",
+          transitionDelay: prefersReducedMotion ? undefined : delay,
           transform: flipped ? "rotateY(0deg)" : "rotateY(180deg)",
         } as React.CSSProperties}
       >
@@ -298,6 +309,7 @@ function FlipCard({
 }
 
 function VsBadge() {
+  const prefersReducedMotion = usePrefersReducedMotion()
   return (
     <Text
       fontSize="3xl"
@@ -305,8 +317,10 @@ function VsBadge() {
       fontFamily="'Cinzel', Georgia, serif"
       color="#F27405"
       style={{
-        animation: "vsPulse 1.5s ease-in-out infinite",
-        animationDelay: "0.6s",
+        animation: prefersReducedMotion
+          ? undefined
+          : "vsPulse 1.5s ease-in-out infinite",
+        animationDelay: prefersReducedMotion ? undefined : "0.6s",
       }}
       lineHeight="1"
       userSelect="none"
@@ -398,6 +412,9 @@ function PickingPhase({
   opponentShuffled: number
   isSolo: boolean
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const PICK_CARD_W = useBreakpointValue({ base: 88, sm: 100, md: 116 }) ?? 88
+  const PICK_CARD_H = Math.round((166 / 116) * PICK_CARD_W)
   const picked = selectedIndex !== null
   const useCounts = new Map<number, number>()
   for (const idx of usedIndices) {
@@ -417,6 +434,10 @@ function PickingPhase({
   const [shufflePhase, setShufflePhase] = useState<"gather" | "spread" | null>(null)
   const handleShuffle = () => {
     if (picked || shufflePhase) return
+    if (prefersReducedMotion) {
+      onShuffle()
+      return
+    }
     setShufflePhase("gather")
     setTimeout(() => {
       onShuffle()           // swap data while cards are piled up
@@ -426,9 +447,6 @@ function PickingPhase({
       }, 350)
     }, 350)
   }
-
-  const PICK_CARD_W = 116
-  const PICK_CARD_H = 166
 
   return (
     <VStack gap="3" align="center" w="full">
@@ -466,15 +484,26 @@ function PickingPhase({
           const activePos = activeCards.indexOf(i)
           const gatherX = activePos >= 0 ? -((activePos - centerPos) * CARD_STRIDE) : 0
           const gatherRot = activePos >= 0 ? (activePos - centerPos) * 8 : 0
+          const playLabel = `Play ${card.name}`
 
           return (
             <Box
               key={card.id}
+              as="button"
+              aria-disabled={!isPickable}
+              tabIndex={isPickable ? 0 : -1}
+              aria-label={isPickable ? playLabel : isExhausted ? `${card.name}, used` : `${card.name}`}
               w={`${PICK_CARD_W}px`}
               h={`${PICK_CARD_H}px`}
               position="relative"
+              p="0"
+              border="none"
+              bg="transparent"
               cursor={isPickable ? "pointer" : "default"}
-              onClick={() => isPickable && onPickCard(i)}
+              onClick={() => {
+                if (!isPickable) return
+                onPickCard(i)
+              }}
               onPointerEnter={() => isPickable && !isSolo && handleHover(i)}
               onPointerLeave={() => !isSolo && handleHover(null)}
               opacity={isExhausted ? 0.25 : isPartiallyUsed ? 0.65 : 1}
@@ -598,7 +627,7 @@ function PickingPhase({
         </HStack>
       ) : (
         <Text color="fg.muted" fontSize="sm" fontStyle="italic">
-          Tap a card to play it
+          Choose a card to play
         </Text>
       )}
     </VStack>
@@ -614,19 +643,19 @@ function RevealPhase({
   roundResult: RoundResult
   isHost: boolean
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const battleCardW = useBreakpointValue({ base: 132, sm: 150, md: 170 }) ?? 132
+  const battleCardH = Math.round((243 / 170) * battleCardW)
   const [flipped, setFlipped] = useState(false)
   const myCard = pick(roundResult.cardA, roundResult.cardB, isHost)
   const oppCard = pick(roundResult.cardB, roundResult.cardA, isHost)
   const myAdv = pick(roundResult.advantageA, roundResult.advantageB, isHost)
   const advText = advantageText(myAdv, myCard.element, oppCard.element)
 
-  const BATTLE_CARD_W = 170
-  const BATTLE_CARD_H = 243
-
   useEffect(() => {
-    const timer = setTimeout(() => setFlipped(true), 300)
+    const timer = setTimeout(() => setFlipped(true), prefersReducedMotion ? 0 : 300)
     return () => clearTimeout(timer)
-  }, [])
+  }, [prefersReducedMotion])
 
   return (
     <VStack gap="2" align="center" w="full">
@@ -640,12 +669,12 @@ function RevealPhase({
       </Text>
 
       {/* Opponent's card (top) — flips first */}
-      <FlipCard card={oppCard} flipped={flipped} delay="0ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
+      <FlipCard card={oppCard} flipped={flipped} delay="0ms" cardWidth={battleCardW} cardHeight={battleCardH} />
 
       <VsBadge />
 
       {/* My card (bottom) — flips second */}
-      <FlipCard card={myCard} flipped={flipped} delay="400ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
+      <FlipCard card={myCard} flipped={flipped} delay={prefersReducedMotion ? "0ms" : "400ms"} cardWidth={battleCardW} cardHeight={battleCardH} />
 
       {/* Element advantage text */}
       {advText && (
@@ -655,8 +684,10 @@ function RevealPhase({
           fontFamily="'Cinzel', Georgia, serif"
           color={myAdv === "strong" ? "#22cc44" : "#cc4444"}
           style={{
-            animation: "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
-            animationDelay: "1.5s",
+            animation: prefersReducedMotion
+              ? undefined
+              : "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
+            animationDelay: prefersReducedMotion ? undefined : "1.5s",
           }}
         >
           {advText}
@@ -675,6 +706,8 @@ function ResolutionPhase({
   roundResult: RoundResult
   isHost: boolean
 }) {
+  const battleCardW = useBreakpointValue({ base: 132, sm: 150, md: 170 }) ?? 132
+  const battleCardH = Math.round((243 / 170) * battleCardW)
   const myCard = pick(roundResult.cardA, roundResult.cardB, isHost)
   const oppCard = pick(roundResult.cardB, roundResult.cardA, isHost)
   const myDmg = pick(roundResult.damageToA, roundResult.damageToB, isHost)
@@ -683,9 +716,6 @@ function ResolutionPhase({
   const oppRemHp = pick(roundResult.remainingHpB, roundResult.remainingHpA, isHost)
   const iWin = didIWin(roundResult, isHost)
   const draw = didIDraw(roundResult)
-
-  const BATTLE_CARD_W = 170
-  const BATTLE_CARD_H = 243
 
   return (
     <VStack gap="2" align="center" w="full">
@@ -708,8 +738,8 @@ function ResolutionPhase({
         damage={oppDmg}
         remainingHp={oppRemHp}
         showDamage
-        cardWidth={BATTLE_CARD_W}
-        cardHeight={BATTLE_CARD_H}
+        cardWidth={battleCardW}
+        cardHeight={battleCardH}
       />
 
       <VsBadge />
@@ -724,8 +754,8 @@ function ResolutionPhase({
         damage={myDmg}
         remainingHp={myRemHp}
         showDamage
-        cardWidth={BATTLE_CARD_W}
-        cardHeight={BATTLE_CARD_H}
+        cardWidth={battleCardW}
+        cardHeight={battleCardH}
       />
     </VStack>
   )
@@ -744,6 +774,7 @@ function RoundSummaryPhase({
   scoreA: number
   scoreB: number
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   const lastRound = allRounds[allRounds.length - 1]
   if (!lastRound) return null
 
@@ -764,7 +795,9 @@ function RoundSummaryPhase({
         color={roundColor}
         letterSpacing="0.05em"
         style={{
-          animation: "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
+          animation: prefersReducedMotion
+            ? undefined
+            : "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
         }}
         lineHeight="1"
       >
@@ -772,7 +805,13 @@ function RoundSummaryPhase({
       </Text>
 
       {/* Score */}
-      <HStack gap="4" style={{ animation: "scorePop 500ms ease-out both", animationDelay: "0.3s" }}>
+      <HStack
+        gap="4"
+        style={{
+          animation: prefersReducedMotion ? undefined : "scorePop 500ms ease-out both",
+          animationDelay: prefersReducedMotion ? undefined : "0.3s",
+        }}
+      >
         <Text
           fontSize="5xl"
           fontWeight="900"
@@ -831,6 +870,9 @@ function MatchEndPhase({
   scoreB: number
   allRounds: RoundResult[]
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const miniCardW = useBreakpointValue({ base: 64, sm: 72, md: 80 }) ?? 64
+  const miniCardH = Math.round((114 / 80) * miniCardW)
   const iWin = matchWinner === null
     ? false
     : (isHost && matchWinner === "A") || (!isHost && matchWinner === "B")
@@ -840,9 +882,6 @@ function MatchEndPhase({
 
   const resultLabel = draw ? "DRAW" : iWin ? "VICTORY" : "DEFEAT"
   const resultColor = draw ? "#F27405" : iWin ? "#ffd700" : "#e05252"
-
-  const MINI_CARD_W = 80
-  const MINI_CARD_H = 114
 
   return (
     <VStack gap="4" align="center" w="full">
@@ -854,7 +893,9 @@ function MatchEndPhase({
         color={resultColor}
         letterSpacing="0.08em"
         style={{
-          animation: "victoryText 800ms cubic-bezier(0.34,1.56,0.64,1) both",
+          animation: prefersReducedMotion
+            ? undefined
+            : "victoryText 800ms cubic-bezier(0.34,1.56,0.64,1) both",
         }}
         lineHeight="1"
       >
@@ -885,7 +926,7 @@ function MatchEndPhase({
       </HStack>
 
       {/* Round-by-round summary */}
-      <VStack gap="2" w="full" maxW="380px">
+      <VStack gap="2" w="full" maxW={{ base: "100%", sm: "380px" }}>
         {allRounds.map((round, idx) => {
           const myCard = pick(round.cardA, round.cardB, isHost)
           const oppCard = pick(round.cardB, round.cardA, isHost)
@@ -906,7 +947,7 @@ function MatchEndPhase({
               borderColor="border"
             >
               <Box borderRadius="8px" overflow="visible">
-                <CardBattle card={myCard} width={MINI_CARD_W} height={MINI_CARD_H} />
+                <CardBattle card={myCard} width={miniCardW} height={miniCardH} />
               </Box>
               <VStack gap="0">
                 <Text
@@ -927,7 +968,7 @@ function MatchEndPhase({
                 </Text>
               </VStack>
               <Box borderRadius="8px" overflow="visible">
-                <CardBattle card={oppCard} width={MINI_CARD_W} height={MINI_CARD_H} />
+                <CardBattle card={oppCard} width={miniCardW} height={miniCardH} />
               </Box>
             </HStack>
           )
@@ -992,6 +1033,7 @@ export default function BattleArena({
   onShuffle,
   opponentShuffled,
 }: BattleArenaProps) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   // Auto-advance from REVEAL to RESOLUTION after dramatic pause
   const [localPhase, setLocalPhase] = useState<BattlePhase>(phase)
 
@@ -1001,16 +1043,31 @@ export default function BattleArena({
 
   useEffect(() => {
     if (localPhase === "REVEAL") {
-      const timer = setTimeout(() => setLocalPhase("RESOLUTION"), 3000)
+      const timer = setTimeout(
+        () => setLocalPhase("RESOLUTION"),
+        prefersReducedMotion ? 1500 : 3000,
+      )
       return () => clearTimeout(timer)
     }
-  }, [localPhase])
+  }, [localPhase, prefersReducedMotion])
 
   return (
     <>
       <style>{BATTLE_KEYFRAMES}</style>
 
-      <Box w="full" maxW="500px" px="2" maxH="100dvh" display="flex" flexDirection="column" alignItems="center" justifyContent="center" position="relative">
+      <Box
+        w="full"
+        maxW={{ base: "100%", sm: "500px" }}
+        px={{ base: 2, sm: 3 }}
+        maxH="100dvh"
+        minH="0"
+        overflowY="auto"
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        position="relative"
+      >
         {/* Reaction toast overlay */}
         <ReactionToast reaction={incomingReaction} />
 

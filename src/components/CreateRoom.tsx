@@ -96,7 +96,10 @@ export default function CreateRoom({
 
   // Auto-create room on mount
   useEffect(() => {
-    createRoom()
+    const timer = setTimeout(() => {
+      void createRoom()
+    }, 0)
+    return () => clearTimeout(timer)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate QR code when shareable URL is available
@@ -120,7 +123,7 @@ export default function CreateRoom({
   // Still connecting — show loading state
   if (!roomCode) {
     return (
-      <VStack gap="6" p="5" align="center" w="full" maxW="400px">
+      <VStack gap="6" p={{ base: "4", sm: "5" }} align="center" w="full" maxW={{ base: "100%", sm: "400px" }}>
         {error ? (
           <VStack gap="3" w="full" maxW="320px">
             <ErrorTap message={error} />
@@ -147,7 +150,7 @@ export default function CreateRoom({
 
   // Room created — show lobby
   return (
-    <VStack gap="6" p="5" align="center" w="full" maxW="400px">
+    <VStack gap="6" p={{ base: "4", sm: "5" }} align="center" w="full" maxW={{ base: "100%", sm: "400px" }}>
       {/* Room code */}
       <VStack gap="1">
         <Text fontSize="sm" color="fg.muted" textTransform="uppercase" letterSpacing="0.1em">
@@ -179,8 +182,8 @@ export default function CreateRoom({
           <Image
             src={qrDataUrl}
             alt={`QR code for room ${roomCode}`}
-            w="200px"
-            h="200px"
+            w={{ base: "180px", sm: "200px" }}
+            h={{ base: "180px", sm: "200px" }}
             borderRadius="md"
           />
         </Box>
@@ -241,6 +244,10 @@ export default function CreateRoom({
           </HStack>
         </Box>
       )}
+
+      <Text fontSize="xs" color="fg.muted" textAlign="center" px="2" maxW="360px" lineHeight="1.5">
+        Share the link or QR code to invite your friend.
+      </Text>
 
       {/* Waiting indicator */}
       <HStack gap="3" mt="2">

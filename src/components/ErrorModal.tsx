@@ -100,7 +100,7 @@ export function ErrorTap({ message, label = "Something went wrong" }: ErrorTapPr
           {label}
         </Text>
         <Text color="fg.muted" fontSize="xs">
-          Tap for details
+          Click or press Enter for details
         </Text>
       </VStack>
     </Box>

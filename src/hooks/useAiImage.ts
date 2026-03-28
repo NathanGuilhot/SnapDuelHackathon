@@ -11,16 +11,18 @@ export function useAiImage(cardId: string | null): {
   const [aiImageState, setAiImageState] = useState<AiImageState>("idle")
 
   useEffect(() => {
-    setAiImageUrl(null)
+    const controller = new AbortController()
+    const resetTimer = setTimeout(() => {
+      setAiImageUrl(null)
+      setAiImageState(cardId ? "generating" : "idle")
+    }, 0)
 
     if (!cardId) {
-      setAiImageState("idle")
-      return
+      return () => {
+        clearTimeout(resetTimer)
+        controller.abort()
+      }
     }
-
-    setAiImageState("generating")
-
-    const controller = new AbortController()
 
     fetch(`/api/card/${cardId}/ai-image`, { signal: controller.signal })
       .then((r) => r.json())
@@ -38,7 +40,10 @@ export function useAiImage(cardId: string | null): {
         // Aborted or network error
       })
 
-    return () => controller.abort()
+    return () => {
+      clearTimeout(resetTimer)
+      controller.abort()
+    }
   }, [cardId])
 
   return { aiImageUrl, aiImageState }
