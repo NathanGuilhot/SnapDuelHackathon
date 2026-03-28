@@ -3,7 +3,7 @@ a real-world object and generate a battle card.
 
 Return ONLY valid JSON with this exact schema:
 {
-  "name": string,        // Creative fantasy card name (2-4 words)
+  "name": string,        // Card name, must include an adjective and the short name of the object itelf (2-4 words total)
   "element": string,     // One of: "fire", "water", "nature", "neutral"
   "attack": number,      // 20-95
   "defense": number,     // 20-95
@@ -41,7 +41,7 @@ ELEMENT_COLOR.
 
 EXAMPLES:
 Photo of a water bottle →
-{"name":"Tidecaller's Vessel","element":"water","attack":38,"defense":62,
+{"name":"Frozen Water Bottle","element":"water","attack":38,"defense":62,
 "hp":85,"quote":"The last drop never falls.",
 "illustration_prompt":"A crystalline water bottle emanating blue magical
 waves, frost forming on its surface, surrounded by floating water
@@ -51,7 +51,7 @@ no text, no border, square crop. Style: Hearthstone card art meets
 Studio Ghibli."}
 
 Photo of a mechanical keyboard →
-{"name":"The Thousand Whispers","element":"fire","attack":78,"defense":45,
+{"name":"Blazing Keyboard","element":"fire","attack":78,"defense":45,
 "hp":72,"quote":"Each keystroke ignites a spell.",
 "illustration_prompt":"A glowing mechanical keyboard with fiery runes on
 each keycap, sparks flying from the switches, molten energy between keys.

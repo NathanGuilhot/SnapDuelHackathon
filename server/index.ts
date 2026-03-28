@@ -6,6 +6,7 @@ import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyCors from "@fastify/cors";
 import { snapLog } from "../shared/debug.js";
+import { registerGenerateCard } from "./generate-card.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -72,6 +73,11 @@ if (!isDev) {
 // --- Routes ---
 app.get("/health", async () => {
   return { status: "ok" };
+});
+
+registerGenerateCard(app, {
+  geminiApiKey: GEMINI_API_KEY,
+  uploadsDir: UPLOADS_DIR,
 });
 
 // --- Start ---
