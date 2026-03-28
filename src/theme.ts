@@ -8,6 +8,16 @@ const config = defineConfig({
       fontSynthesis: "none",
       textRendering: "optimizeLegibility",
       background: "#011a1a",
+      textSizeAdjust: "100%",
+    },
+    // Prevent iOS auto-zoom on input focus (requires >= 16px)
+    "input, select, textarea": {
+      fontSize: "16px",
+    },
+    // Ensure all interactive elements meet 44x44px minimum touch target
+    "button, [role='button'], a": {
+      minHeight: "44px",
+      minWidth: "44px",
     },
     body: {
       backgroundImage:

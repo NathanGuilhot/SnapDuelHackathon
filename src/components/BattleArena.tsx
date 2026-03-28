@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Box, Button, HStack, Spinner, Text, VStack } from "@chakra-ui/react"
+import { Box, Button, HStack, SimpleGrid, Spinner, Text, VStack } from "@chakra-ui/react"
 import CardBattle from "./Card"
 import type { Card, RoundResult, ElementAdvantage } from "../../shared/types"
 
@@ -265,10 +265,12 @@ function PickingPhase({
         Choose Your Champion
       </Text>
 
-      <HStack gap="4" justify="center" flexWrap="wrap">
+      <SimpleGrid columns={{ base: 2, md: 3 }} gap="3" justifyItems="center" w="full">
         {myCards.map((card, i) => (
           <Box
             key={card.id}
+            w="154px"
+            h="220px"
             position="relative"
             cursor={picked ? "default" : "pointer"}
             onClick={() => !picked && onPickCard(i)}
@@ -283,8 +285,9 @@ function PickingPhase({
                   : undefined
             }
             borderRadius="18px"
+            overflow="visible"
           >
-            <Box transform="scale(0.78)" transformOrigin="center">
+            <Box transform="scale(0.55)" transformOrigin="top left">
               <CardBattle card={card} />
             </Box>
 
@@ -295,8 +298,8 @@ function PickingPhase({
                 top="50%"
                 left="50%"
                 transform="translate(-50%, -50%)"
-                w="60px"
-                h="60px"
+                w="40px"
+                h="40px"
                 borderRadius="full"
                 bg="rgba(34,170,68,0.9)"
                 display="flex"
@@ -307,14 +310,14 @@ function PickingPhase({
                 border="3px solid rgba(255,255,255,0.3)"
                 boxShadow="0 0 20px rgba(34,170,68,0.5)"
               >
-                <Text fontSize="2xl" lineHeight="1">
+                <Text fontSize="lg" lineHeight="1">
                   {"\u2714"}
                 </Text>
               </Box>
             )}
           </Box>
         ))}
-      </HStack>
+      </SimpleGrid>
 
       {/* Status text */}
       {picked ? (

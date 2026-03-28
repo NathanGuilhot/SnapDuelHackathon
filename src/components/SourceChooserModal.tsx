@@ -79,7 +79,7 @@ export const SourceChooserModal = NiceModal.create(
                 top="3"
                 insetEnd="3"
               >
-                <CloseButton size="sm" />
+                <CloseButton size="md" />
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>

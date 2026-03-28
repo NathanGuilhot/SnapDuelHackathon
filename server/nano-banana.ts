@@ -71,11 +71,11 @@ export function triggerNanoBanana(
           // Find the inline image part
           const parts = response.candidates?.[0]?.content?.parts;
           const imagePart = parts?.find(
-            (p: { inlineData?: { mimeType: string; data: string } }) =>
-              p.inlineData?.mimeType?.startsWith("image/"),
+            (p) => p.inlineData?.mimeType?.startsWith("image/"),
           );
 
-          if (!imagePart?.inlineData) {
+          const imageData = imagePart?.inlineData?.data;
+          if (!imageData) {
             snapLog("NANOBANANA_ERROR", { cardId, error: "No image in response" });
             aiImageStore.set(cardId, { state: "failed", reason: "no_image" });
             return;
@@ -84,7 +84,7 @@ export function triggerNanoBanana(
           // Write PNG to uploads
           const filename = `${cardId}-ai.png`;
           const filePath = join(uploadsDir, filename);
-          const buffer = Buffer.from(imagePart.inlineData.data, "base64");
+          const buffer = Buffer.from(imageData, "base64");
           await writeFile(filePath, buffer);
 
           const url = `/uploads/${filename}`;

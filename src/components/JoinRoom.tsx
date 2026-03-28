@@ -61,20 +61,24 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
       try {
         // Leave any existing room (e.g. auto-created host room)
         leaveRoom()
+        // Brief yield so SDK disconnect events settle before reconnecting
+        await new Promise((r) => setTimeout(r, 50))
         const token = await getSandboxPeerToken(code, playerName, "conference")
         const metadata: PeerMetadata = { name: playerName, isHost: false }
         await joinRoom({ peerToken: token, peerMetadata: metadata })
         setJoined(true)
         snapLog("JOIN_SUCCESS", { roomCode: code })
       } catch (err) {
-        const msg = err instanceof Error ? (err.message || "Failed to join room") : (err != null ? String(err) : "Failed to join room")
+        const msg = err instanceof Error
+          ? (err.message || "Connection failed — check your network and try again")
+          : (err != null ? String(err) : "Connection failed — check your network and try again")
         setError(msg)
-        snapLog("JOIN_ERROR", { error: msg })
+        snapLog("JOIN_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus })
       } finally {
         setJoining(false)
       }
     },
-    [getSandboxPeerToken, joinRoom, leaveRoom, playerName],
+    [getSandboxPeerToken, joinRoom, leaveRoom, playerName, peerStatus],
   )
 
   // Auto-join when initialCode is provided
@@ -83,7 +87,11 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
       joinAttempted.current = true
       doJoin(initialCode)
     }
-  }, [initialCode, doJoin])
+    return () => {
+      joinAttempted.current = false
+      leaveRoom()
+    }
+  }, [initialCode, doJoin, leaveRoom])
 
   // Watch for host presence
   useEffect(() => {

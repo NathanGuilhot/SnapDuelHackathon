@@ -15,6 +15,7 @@ import CardBattle from "./components/Card"
 import BattleArena from "./components/BattleArena"
 import CreateRoom from "./components/CreateRoom"
 import { ErrorTap } from "./components/ErrorModal"
+import MyCards from "./components/MyCards"
 import JoinRoom from "./components/JoinRoom"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { saveHand, loadHand, clearHand } from "./lib/handStorage"
@@ -32,6 +33,7 @@ type Screen =
   | "picking"
   | "reveal"
   | "match-end"
+  | "my-cards"
 
 function extractRoomCode(): string | null {
   const path = window.location.pathname.replace(/^\//, "")
@@ -464,25 +466,46 @@ function App() {
       {/* Lobby — auto-creates room, waits for opponent */}
       {screen === "lobby" && (
         <>
-          <Button
+          <HStack
             position="absolute"
             top={{ base: "4", lg: "6" }}
             right={{ base: "4", lg: "6" }}
-            size="sm"
-            variant="outline"
-            colorPalette="orange"
-            onClick={() => {
-              setIsSolo(true)
-              setScreen("card-building")
-            }}
+            gap="2"
           >
-            Solo mode
-          </Button>
+            {hand.length > 0 && (
+              <Button
+                size="md"
+                variant="outline"
+                colorPalette="orange"
+                px="4"
+                onClick={() => setScreen("my-cards")}
+              >
+                My Cards
+              </Button>
+            )}
+            <Button
+              size="md"
+              variant="outline"
+              colorPalette="orange"
+              px="4"
+              onClick={() => {
+                setIsSolo(true)
+                setScreen("card-building")
+              }}
+            >
+              Solo mode
+            </Button>
+          </HStack>
           <CreateRoom
             onOpponentJoined={handleOpponentJoined}
             onJoinWithCode={handleJoinWithCode}
           />
         </>
+      )}
+
+      {/* My Cards — browse saved cards */}
+      {screen === "my-cards" && (
+        <MyCards cards={hand} onBack={() => setScreen("lobby")} />
       )}
 
       {/* Guest joining — auto-join from URL or modal code entry */}

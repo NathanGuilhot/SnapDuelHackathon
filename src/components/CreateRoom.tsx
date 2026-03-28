@@ -45,7 +45,7 @@ export default function CreateRoom({
   onJoinWithCode,
 }: CreateRoomProps) {
   const { getSandboxPeerToken } = useSandbox()
-  const { joinRoom, peerStatus } = useConnection()
+  const { joinRoom, leaveRoom, peerStatus } = useConnection()
   const { remotePeers } = usePeers()
 
   const [roomCode, setRoomCode] = useState<string | null>(null)
@@ -101,14 +101,16 @@ export default function CreateRoom({
         snapLog("ROOM_JOINED", { roomCode: code })
       } catch (err) {
         if (cancelled) return
-        const msg = err instanceof Error ? (err.message || "Failed to create room") : (err != null ? String(err) : "Failed to create room")
+        const msg = err instanceof Error
+          ? (err.message || "Connection failed — check your network and try again")
+          : (err != null ? String(err) : "Connection failed — check your network and try again")
         setError(msg)
-        snapLog("ROOM_ERROR", { error: msg })
+        snapLog("ROOM_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus })
       }
     }
 
     create()
-    return () => { cancelled = true }
+    return () => { cancelled = true; leaveRoom() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate QR code when shareable URL is available
@@ -263,13 +265,15 @@ export default function CreateRoom({
       {/* Join existing room */}
       <Button
         variant="plain"
-        size="sm"
+        size="md"
         color="fg.muted"
         fontWeight="400"
+        fontSize={{ base: "md", lg: "sm" }}
         textDecoration="underline"
         textUnderlineOffset="3px"
         _hover={{ color: "fg.heading" }}
         mt="2"
+        px="4"
         onClick={() =>
           NiceModal.show(JoinModal, {
             onJoin: (code: string) => onJoinWithCode(code),
