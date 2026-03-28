@@ -9,7 +9,7 @@ import App from "./App"
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ChakraProvider value={system}>
-      <ThemeProvider attribute="class" disableTransitionOnChange>
+      <ThemeProvider attribute="class" disableTransitionOnChange forcedTheme="dark">
         <NiceModal.Provider>
           <App />
         </NiceModal.Provider>

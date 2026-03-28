@@ -7,14 +7,19 @@ const config = defineConfig({
       padding: 0,
       fontSynthesis: "none",
       textRendering: "optimizeLegibility",
+      background: "#011a1a",
+    },
+    body: {
+      backgroundImage:
+        "radial-gradient(ellipse at 50% 0%, rgba(2, 115, 94, 0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(242, 116, 5, 0.06) 0%, transparent 50%)",
+      backgroundAttachment: "fixed",
+      minHeight: "100svh",
     },
     "#root": {
       width: "1126px",
       maxWidth: "100%",
       margin: "0 auto",
       textAlign: "center",
-      borderInline: "1px solid",
-      borderColor: "border",
       minHeight: "100svh",
       display: "flex",
       flexDirection: "column",
@@ -24,7 +29,7 @@ const config = defineConfig({
   theme: {
     tokens: {
       fonts: {
-        heading: { value: "system-ui, 'Segoe UI', Roboto, sans-serif" },
+        heading: { value: "Georgia, 'Times New Roman', serif" },
         body: { value: "system-ui, 'Segoe UI', Roboto, sans-serif" },
         mono: { value: "ui-monospace, Consolas, monospace" },
       },
@@ -32,33 +37,45 @@ const config = defineConfig({
     semanticTokens: {
       colors: {
         bg: {
-          value: { _light: "#fff", _dark: "#16171d" },
+          value: { _light: "#011a1a", _dark: "#011a1a" },
         },
-        fg: {
-          value: { _light: "#6b6375", _dark: "#9ca3af" },
-        },
-        "fg.heading": {
-          value: { _light: "#08060d", _dark: "#f3f4f6" },
-        },
-        border: {
-          value: { _light: "#e5e4e7", _dark: "#2e303a" },
+        "bg.subtle": {
+          value: { _light: "#012e2e", _dark: "#012e2e" },
         },
         "bg.code": {
-          value: { _light: "#f4f3ec", _dark: "#1f2028" },
+          value: { _light: "#012424", _dark: "#012424" },
+        },
+        fg: {
+          value: { _light: "#a8b5b0", _dark: "#a8b5b0" },
+        },
+        "fg.heading": {
+          value: { _light: "#e8f0ed", _dark: "#e8f0ed" },
+        },
+        "fg.muted": {
+          value: { _light: "#6b8a80", _dark: "#6b8a80" },
+        },
+        "fg.error": {
+          value: { _light: "#e05252", _dark: "#e05252" },
+        },
+        border: {
+          value: {
+            _light: "rgba(2, 115, 94, 0.35)",
+            _dark: "rgba(2, 115, 94, 0.35)",
+          },
         },
         accent: {
-          value: { _light: "#aa3bff", _dark: "#c084fc" },
+          value: { _light: "#F27405", _dark: "#F27405" },
         },
         "accent.bg": {
           value: {
-            _light: "rgba(170,59,255,0.1)",
-            _dark: "rgba(192,132,252,0.15)",
+            _light: "rgba(242, 116, 5, 0.15)",
+            _dark: "rgba(242, 116, 5, 0.15)",
           },
         },
         "accent.border": {
           value: {
-            _light: "rgba(170,59,255,0.5)",
-            _dark: "rgba(192,132,252,0.5)",
+            _light: "rgba(242, 116, 5, 0.5)",
+            _dark: "rgba(242, 116, 5, 0.5)",
           },
         },
       },

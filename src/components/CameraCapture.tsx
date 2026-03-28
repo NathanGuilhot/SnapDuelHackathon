@@ -120,16 +120,17 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
             maxW="400px"
             borderRadius="xl"
             border="2px solid"
-            borderColor="border"
+            borderColor="accent"
             objectFit="cover"
             aspectRatio="1/1"
             bg="bg.code"
+            shadow="0 0 20px rgba(242, 116, 5, 0.2)"
           />
           <VStack gap="3" w="full" maxW="320px">
             <Button
               w="full"
               size="lg"
-              colorPalette="purple"
+              colorPalette="orange"
               onClick={handleConfirm}
             >
               Use This Photo
@@ -138,7 +139,7 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
               w="full"
               size="lg"
               variant="outline"
-              colorPalette="purple"
+              colorPalette="teal"
               onClick={handleRetake}
             >
               Retake
@@ -152,10 +153,11 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
             maxW="400px"
             borderRadius="xl"
             border="2px solid"
-            borderColor="border"
+            borderColor="accent"
             overflow="hidden"
             aspectRatio="1/1"
             bg="black"
+            shadow="0 0 30px rgba(242, 116, 5, 0.15)"
           >
             <video
               ref={videoRef}
@@ -174,7 +176,7 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
             <Button
               w="full"
               size="lg"
-              colorPalette="purple"
+              colorPalette="orange"
               onClick={captureFrame}
             >
               Capture
@@ -183,7 +185,7 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
               w="full"
               size="lg"
               variant="outline"
-              colorPalette="purple"
+              colorPalette="teal"
               onClick={stopStream}
             >
               Cancel
@@ -191,18 +193,39 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
           </VStack>
         </>
       ) : (
-        <>
-          <Text color="fg" fontSize="md">
-            Take a picture of any object to start the duel.
-          </Text>
+        <VStack gap="6" align="center" py="8">
+          <Box
+            w="120px"
+            h="120px"
+            borderRadius="full"
+            border="2px dashed"
+            borderColor="accent"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            opacity="0.7"
+          >
+            <Text fontSize="4xl" lineHeight="1">
+              {"\u{1F4F8}"}
+            </Text>
+          </Box>
+          <VStack gap="2">
+            <Text color="fg.heading" fontSize="lg" fontWeight="600">
+              Capture Your Champion
+            </Text>
+            <Text color="fg.muted" fontSize="sm" maxW="280px">
+              Photograph any object to forge it into a battle card
+            </Text>
+          </VStack>
           <Button
             size="lg"
-            colorPalette="purple"
+            colorPalette="orange"
             onClick={handleTakePhoto}
+            px="8"
           >
             Take Photo
           </Button>
-        </>
+        </VStack>
       )}
     </VStack>
   )

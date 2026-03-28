@@ -114,16 +114,28 @@ function App() {
       p={{ base: "6 4", lg: "8 5" }}
       gap="4"
     >
-      <Heading
-        as="h1"
-        fontSize={{ base: "4xl", lg: "6xl" }}
-        fontWeight="500"
-        letterSpacing="-0.03em"
-        color="fg.heading"
-        my={{ base: "5", lg: "8" }}
-      >
-        SnapDuel
-      </Heading>
+      <VStack gap="1" my={{ base: "6", lg: "10" }}>
+        <Heading
+          as="h1"
+          fontSize={{ base: "5xl", lg: "7xl" }}
+          fontWeight="800"
+          fontFamily="heading"
+          letterSpacing="-0.02em"
+          color="fg.heading"
+          textShadow="0 0 40px rgba(242, 116, 5, 0.3)"
+          lineHeight="1"
+        >
+          SnapDuel
+        </Heading>
+        <Text
+          fontSize={{ base: "sm", lg: "md" }}
+          color="fg.muted"
+          fontStyle="italic"
+          letterSpacing="0.05em"
+        >
+          Snap. Forge. Fight.
+        </Text>
+      </VStack>
 
       {hasCapture ? (
         <VStack gap="4" p="5" align="center" w="full" maxW="400px">
@@ -135,9 +147,10 @@ function App() {
                 w="full"
                 borderRadius="xl"
                 border="2px solid"
-                borderColor="border"
+                borderColor="accent"
                 objectFit="cover"
                 aspectRatio="1/1"
+                shadow="0 0 20px rgba(242, 116, 5, 0.2)"
               />
               <VStack gap="2" w="full" align="center">
                 <HStack gap="3" align="baseline">
@@ -168,8 +181,9 @@ function App() {
                   color="fg.muted"
                   fontSize="sm"
                   textAlign="center"
+                  fontFamily="heading"
                 >
-                  "{card.quote}"
+                  &ldquo;{card.quote}&rdquo;
                 </Text>
               </VStack>
             </>
@@ -181,9 +195,10 @@ function App() {
                 w="full"
                 borderRadius="xl"
                 border="2px solid"
-                borderColor="border"
+                borderColor="accent"
                 objectFit="cover"
                 aspectRatio="1/1"
+                shadow="0 0 20px rgba(242, 116, 5, 0.2)"
               />
               <HStack gap="3">
                 <Spinner size="sm" color="accent" />
@@ -203,13 +218,14 @@ function App() {
                 borderColor="border"
                 objectFit="cover"
                 aspectRatio="1/1"
+                shadow="0 0 20px rgba(242, 116, 5, 0.1)"
               />
               <Text color="fg.error" fontWeight="500" fontSize="md">
                 {error}
               </Text>
               <Button
                 size="lg"
-                colorPalette="purple"
+                colorPalette="orange"
                 w="full"
                 maxW="320px"
                 onClick={handleRetry}
@@ -221,7 +237,7 @@ function App() {
           <Button
             size="lg"
             variant="outline"
-            colorPalette="purple"
+            colorPalette="teal"
             w="full"
             maxW="320px"
             onClick={handleReset}

@@ -32,14 +32,22 @@ export const SourceChooserModal = NiceModal.create(
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
-            <Dialog.Content p="8" maxW="360px" borderRadius="xl" bg="bg" shadow="lg">
+            <Dialog.Content
+              p="8"
+              maxW="360px"
+              borderRadius="xl"
+              bg="bg"
+              border="1px solid"
+              borderColor="border"
+              shadow="0 0 40px rgba(0, 0, 0, 0.5)"
+            >
               <Dialog.Header p="0" mb="4">
                 <Dialog.Title
                   fontSize="xl"
-                  fontWeight="500"
+                  fontWeight="600"
                   color="fg.heading"
                 >
-                  Choose source
+                  Ready Your Shot
                 </Dialog.Title>
               </Dialog.Header>
 
@@ -48,7 +56,7 @@ export const SourceChooserModal = NiceModal.create(
                   <Button
                     w="full"
                     size="lg"
-                    colorPalette="purple"
+                    colorPalette="orange"
                     onClick={() => handleChoice("camera")}
                   >
                     Use Camera
@@ -57,7 +65,7 @@ export const SourceChooserModal = NiceModal.create(
                     w="full"
                     size="lg"
                     variant="outline"
-                    colorPalette="purple"
+                    colorPalette="teal"
                     onClick={() => handleChoice("upload")}
                   >
                     Upload File
