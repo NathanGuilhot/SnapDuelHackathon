@@ -242,7 +242,7 @@ function App() {
 
       snapLog("CARD_RECEIVED", { id: data.id, name: data.name })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = err instanceof Error ? (err.message || "Failed to generate card") : (err != null ? String(err) : "Failed to generate card")
       setError(msg)
       snapLog("GENERATE_ERROR", { error: msg })
     } finally {

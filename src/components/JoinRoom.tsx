@@ -66,7 +66,7 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
         setJoined(true)
         snapLog("JOIN_SUCCESS", { roomCode: code })
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        const msg = err instanceof Error ? (err.message || "Failed to join room") : (err != null ? String(err) : "Failed to join room")
         setError(msg)
         snapLog("JOIN_ERROR", { error: msg })
       } finally {

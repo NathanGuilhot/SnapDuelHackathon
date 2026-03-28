@@ -100,7 +100,7 @@ export default function CreateRoom({
         snapLog("ROOM_JOINED", { roomCode: code })
       } catch (err) {
         if (cancelled) return
-        const msg = err instanceof Error ? err.message : String(err)
+        const msg = err instanceof Error ? (err.message || "Failed to create room") : (err != null ? String(err) : "Failed to create room")
         setError(msg)
         snapLog("ROOM_ERROR", { error: msg })
       }

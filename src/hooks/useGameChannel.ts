@@ -46,9 +46,9 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
     }
   }, [peerStatus, initializeDataChannel])
 
-  // Subscribe to incoming messages on the reliable channel
+  // Subscribe as soon as WebRTC is connected (subscribeData works before data channels are created)
   useEffect(() => {
-    if (!dataChannelReady) return
+    if (peerStatus !== "connected") return
 
     const unsub = subscribeData((raw: Uint8Array) => {
       try {
@@ -76,7 +76,7 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
     }, { reliable: true })
 
     return unsub
-  }, [subscribeData, dataChannelReady])
+  }, [subscribeData, peerStatus])
 
   const send = useCallback(
     (msg: GameMessage, target?: string) => {
