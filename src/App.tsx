@@ -17,6 +17,7 @@ import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { saveHand, loadHand, clearHand } from "./lib/handStorage"
 import { saveToCollection, updateCollectionCard, loadCollection } from "./lib/collectionStorage"
 import { generateSoloOpponents, soloPickCard } from "./lib/soloOpponent"
+import snapDuelLogo from "./assets/snapduellogo.png"
 import { snapLog } from "../shared/debug.ts"
 import { useGameChannel } from "./hooks/useGameChannel"
 import { useAiImage } from "./hooks/useAiImage"
@@ -638,7 +639,7 @@ function App() {
       {!isBattleScreen && (
         <VStack gap="1" my={{ base: "6", lg: "10" }}>
           <Image
-            src="/src/assets/snapduellogo.png"
+            src={snapDuelLogo}
             alt="SnapDuel"
             maxW="320px"
             w="100%"
