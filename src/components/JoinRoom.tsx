@@ -14,8 +14,7 @@ import { useConnection, usePeers, useSandbox } from "@fishjam-cloud/react-client
 import { ErrorTap } from "./ErrorModal"
 import { snapLog } from "../../shared/debug"
 import type { PeerMetadata } from "../../shared/types"
-
-const VALID_CODE = /^[A-HJ-NP-Z]{4}$/
+import { VALID_ROOM_CODE } from "../../shared/constants"
 
 const STATUS_COLOR: Record<string, string> = {
   idle: "gray",
@@ -55,7 +54,7 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
   const leaveRoomRef = useRef(leaveRoom)
   leaveRoomRef.current = leaveRoom
 
-  const codeValid = VALID_CODE.test(roomCode)
+  const codeValid = VALID_ROOM_CODE.test(roomCode)
 
   const doJoin = useCallback(
     async (code: string) => {
@@ -89,7 +88,7 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
 
   // Auto-join when initialCode is provided
   useEffect(() => {
-    if (initialCode && VALID_CODE.test(initialCode) && !joinAttempted.current) {
+    if (initialCode && VALID_ROOM_CODE.test(initialCode) && !joinAttempted.current) {
       joinAttempted.current = true
       doJoinRef.current(initialCode)
     }

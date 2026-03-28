@@ -1,6 +1,5 @@
 import NiceModal, { useModal } from "@ebay/nice-modal-react"
 import {
-  Box,
   Button,
   CloseButton,
   Dialog,
@@ -61,15 +60,13 @@ const CardPreviewModal = NiceModal.create(
               alignItems="center"
               gap="4"
             >
-              <Box>
-                <CardBattle
-                  card={card}
-                  width={w}
-                  height={h}
-                  aiImageUrl={aiImageUrl ?? undefined}
-                  aiGenerating={aiGenerating}
-                />
-              </Box>
+              <CardBattle
+                card={card}
+                width={w}
+                height={h}
+                aiImageUrl={aiImageUrl ?? undefined}
+                aiGenerating={aiGenerating}
+              />
 
               {onAddToHand && (
                 <Button

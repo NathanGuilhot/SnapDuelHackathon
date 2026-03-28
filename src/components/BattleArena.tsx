@@ -116,32 +116,8 @@ function advantageText(adv: ElementAdvantage, attackerElement: string, defenderE
   return null
 }
 
-function getMyCard(result: RoundResult, isHost: boolean): Card {
-  return isHost ? result.cardA : result.cardB
-}
-
-function getOppCard(result: RoundResult, isHost: boolean): Card {
-  return isHost ? result.cardB : result.cardA
-}
-
-function getMyDamage(result: RoundResult, isHost: boolean): number {
-  return isHost ? result.damageToA : result.damageToB
-}
-
-function getOppDamage(result: RoundResult, isHost: boolean): number {
-  return isHost ? result.damageToB : result.damageToA
-}
-
-function getMyRemainingHp(result: RoundResult, isHost: boolean): number {
-  return isHost ? result.remainingHpA : result.remainingHpB
-}
-
-function getOppRemainingHp(result: RoundResult, isHost: boolean): number {
-  return isHost ? result.remainingHpB : result.remainingHpA
-}
-
-function getMyAdvantage(result: RoundResult, isHost: boolean): ElementAdvantage {
-  return isHost ? result.advantageA : result.advantageB
+function pick<T>(a: T, b: T, isHost: boolean): T {
+  return isHost ? a : b
 }
 
 function didIWin(result: RoundResult, isHost: boolean): boolean {
@@ -639,9 +615,9 @@ function RevealPhase({
   isHost: boolean
 }) {
   const [flipped, setFlipped] = useState(false)
-  const myCard = getMyCard(roundResult, isHost)
-  const oppCard = getOppCard(roundResult, isHost)
-  const myAdv = getMyAdvantage(roundResult, isHost)
+  const myCard = pick(roundResult.cardA, roundResult.cardB, isHost)
+  const oppCard = pick(roundResult.cardB, roundResult.cardA, isHost)
+  const myAdv = pick(roundResult.advantageA, roundResult.advantageB, isHost)
   const advText = advantageText(myAdv, myCard.element, oppCard.element)
 
   const BATTLE_CARD_W = 170
@@ -699,12 +675,12 @@ function ResolutionPhase({
   roundResult: RoundResult
   isHost: boolean
 }) {
-  const myCard = getMyCard(roundResult, isHost)
-  const oppCard = getOppCard(roundResult, isHost)
-  const myDmg = getMyDamage(roundResult, isHost)
-  const oppDmg = getOppDamage(roundResult, isHost)
-  const myRemHp = getMyRemainingHp(roundResult, isHost)
-  const oppRemHp = getOppRemainingHp(roundResult, isHost)
+  const myCard = pick(roundResult.cardA, roundResult.cardB, isHost)
+  const oppCard = pick(roundResult.cardB, roundResult.cardA, isHost)
+  const myDmg = pick(roundResult.damageToA, roundResult.damageToB, isHost)
+  const oppDmg = pick(roundResult.damageToB, roundResult.damageToA, isHost)
+  const myRemHp = pick(roundResult.remainingHpA, roundResult.remainingHpB, isHost)
+  const oppRemHp = pick(roundResult.remainingHpB, roundResult.remainingHpA, isHost)
   const iWin = didIWin(roundResult, isHost)
   const draw = didIDraw(roundResult)
 
@@ -911,8 +887,8 @@ function MatchEndPhase({
       {/* Round-by-round summary */}
       <VStack gap="2" w="full" maxW="380px">
         {allRounds.map((round, idx) => {
-          const myCard = getMyCard(round, isHost)
-          const oppCard = getOppCard(round, isHost)
+          const myCard = pick(round.cardA, round.cardB, isHost)
+          const oppCard = pick(round.cardB, round.cardA, isHost)
           const roundWin = didIWin(round, isHost)
           const roundDraw = didIDraw(round)
 

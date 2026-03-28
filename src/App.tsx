@@ -501,14 +501,8 @@ function App() {
     }
   }
 
-  function handlePlayAgain() {
-    // Leave Fishjam room before resetting
-    leaveRoom()
-
-    // Clean up preview URL
+  function resetMatchState() {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
-
-    // Reset all state
     clearHand()
     setHand([])
     setHandReady(false)
@@ -525,46 +519,24 @@ function App() {
     setCardBlob(null)
     setLoading(false)
     setError(null)
-    setDisconnected(false)
     setIncomingReaction(null)
     setReactionCooldown(false)
     setOpponentHoveredIndex(null)
     setOpponentShuffled(0)
-    hadOpponent.current = false
+  }
 
-    if (isSolo) {
-      setIsSolo(false)
-    }
+  function handlePlayAgain() {
+    leaveRoom()
+    resetMatchState()
+    setDisconnected(false)
+    hadOpponent.current = false
+    if (isSolo) setIsSolo(false)
     setScreen("lobby")
     snapLog("PLAY_AGAIN")
   }
 
   function handleRematch() {
-    // Clean up preview URL
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-
-    // Reset match state but keep connection and collection
-    clearHand()
-    setHand([])
-    setHandReady(false)
-    setOpponentCards([])
-    setOpponentReady(false)
-    setSelectedIndex(null)
-    setOpponentPickedIndex(null)
-    setRoundResult(null)
-    setMatchWinner(null)
-    setMatchState(null)
-    setCard(null)
-    setPreviewUrl(null)
-    setGeminiBlob(null)
-    setCardBlob(null)
-    setLoading(false)
-    setError(null)
-    setIncomingReaction(null)
-    setReactionCooldown(false)
-    setOpponentHoveredIndex(null)
-    setOpponentShuffled(0)
-
+    resetMatchState()
     setScreen("card-building")
     snapLog("REMATCH")
   }

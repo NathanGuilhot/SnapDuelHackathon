@@ -44,6 +44,8 @@ function is429(err: unknown): boolean {
   return String(err).includes('"code":429');
 }
 
+const CLEANUP_DELAY_MS = 60 * 60 * 1000; // 1 hour
+
 function settleAiImage(cardId: string, status: AiImageStatus): void {
   aiImageStore.set(cardId, status);
   const resolve = aiImageResolvers.get(cardId);
@@ -51,6 +53,10 @@ function settleAiImage(cardId: string, status: AiImageStatus): void {
     resolve(status);
     aiImageResolvers.delete(cardId);
   }
+  setTimeout(() => {
+    aiImageStore.delete(cardId);
+    aiImagePromises.delete(cardId);
+  }, CLEANUP_DELAY_MS);
 }
 
 // ── Public trigger (fire-and-forget) ─────────────────────────────

@@ -1,15 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Box, Text } from "@chakra-ui/react"
 import type { ReactionId } from "../../shared/types"
-
-const REACTION_DATA: Record<ReactionId, { label: string; emoji: string }> = {
-  gg:      { label: "Good game!",            emoji: "\u{1F91D}" },
-  oops:    { label: "Oops!",                 emoji: "\u{1F62C}" },
-  revenge: { label: "I'll get my revenge...", emoji: "\u{1F608}" },
-  wow:     { label: "Wow!",                  emoji: "\u{1F62E}" },
-  think:   { label: "Hmm, interesting...",    emoji: "\u{1F914}" },
-  fear:    { label: "I'm scared...",          emoji: "\u{1F628}" },
-}
+import { REACTION_DATA } from "../lib/reactions"
 
 const TOAST_KEYFRAMES = `
 @keyframes reactionEnter {

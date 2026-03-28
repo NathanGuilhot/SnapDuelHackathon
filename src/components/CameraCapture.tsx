@@ -2,15 +2,11 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { Box, Button, Image, Text, VStack } from "@chakra-ui/react"
 import NiceModal from "@ebay/nice-modal-react"
 import { SourceChooserModal } from "./SourceChooserModal"
-import type { Card } from "../../shared/types"
-
 interface CameraCaptureProps {
   onCapture: (file: File) => void
-  savedCards?: Card[]
-  onUseSavedCards?: () => void
 }
 
-export default function CameraCapture({ onCapture, savedCards, onUseSavedCards }: CameraCaptureProps) {
+export default function CameraCapture({ onCapture }: CameraCaptureProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [capturedFile, setCapturedFile] = useState<File | null>(null)
   const [streaming, setStreaming] = useState(false)
@@ -104,10 +100,6 @@ export default function CameraCapture({ onCapture, savedCards, onUseSavedCards }
     })
   }, [startWebcam])
 
-  const handleChooseSaved = useCallback(() => {
-    if (!savedCards || !onUseSavedCards) return
-    onUseSavedCards()
-  }, [savedCards, onUseSavedCards])
 
   return (
     <VStack gap="6" p="5" w="full" align="center">
@@ -233,22 +225,6 @@ export default function CameraCapture({ onCapture, savedCards, onUseSavedCards }
           >
             Take Photo
           </Button>
-          {savedCards && savedCards.length > 0 && onUseSavedCards && (
-            <>
-              <Text color="fg.muted" fontSize="sm">
-                or
-              </Text>
-              <Button
-                size="lg"
-                variant="outline"
-                colorPalette="teal"
-                onClick={handleChooseSaved}
-                px="8"
-              >
-                Use Saved Card
-              </Button>
-            </>
-          )}
         </VStack>
       )}
     </VStack>

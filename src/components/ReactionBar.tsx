@@ -1,14 +1,6 @@
 import { Box, HStack } from "@chakra-ui/react"
 import type { ReactionId } from "../../shared/types"
-
-const REACTIONS: { id: ReactionId; emoji: string }[] = [
-  { id: "gg",      emoji: "\u{1F91D}" },
-  { id: "oops",    emoji: "\u{1F62C}" },
-  { id: "revenge", emoji: "\u{1F608}" },
-  { id: "wow",     emoji: "\u{1F62E}" },
-  { id: "think",   emoji: "\u{1F914}" },
-  { id: "fear",    emoji: "\u{1F628}" },
-]
+import { REACTIONS } from "../lib/reactions"
 
 interface ReactionBarProps {
   onSend: (id: ReactionId) => void

@@ -48,7 +48,11 @@ export function getAvailableIndices(
   handSize: number,
   usedIndices: number[],
 ): number[] {
+  const counts = new Map<number, number>();
+  for (const idx of usedIndices) {
+    counts.set(idx, (counts.get(idx) ?? 0) + 1);
+  }
   return Array.from({ length: handSize }, (_, i) => i).filter(
-    (i) => usedIndices.filter((u) => u === i).length < MAX_CARD_USES,
+    (i) => (counts.get(i) ?? 0) < MAX_CARD_USES,
   );
 }

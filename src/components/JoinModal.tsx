@@ -9,8 +9,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react"
-
-const VALID_CODE = /^[A-HJ-NP-Z]{4}$/
+import { VALID_ROOM_CODE } from "../../shared/constants"
 
 interface JoinModalProps {
   onJoin: (code: string) => void
@@ -20,7 +19,7 @@ export const JoinModal = NiceModal.create(({ onJoin }: JoinModalProps) => {
   const modal = useModal()
   const [code, setCode] = useState("")
 
-  const codeValid = VALID_CODE.test(code)
+  const codeValid = VALID_ROOM_CODE.test(code)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

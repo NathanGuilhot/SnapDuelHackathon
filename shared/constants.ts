@@ -33,3 +33,5 @@ export const HAND_SIZE = 3;
 export const WINS_NEEDED = 2;
 export const MAX_ROUNDS = 3;
 export const MAX_CARD_USES = 2;
+
+export const VALID_ROOM_CODE = /^[A-HJ-NP-Z]{4}$/;
