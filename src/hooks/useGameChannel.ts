@@ -46,6 +46,8 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
 
   // Subscribe to incoming messages on the reliable channel
   useEffect(() => {
+    if (!dataChannelReady) return
+
     const unsub = subscribeData((raw: Uint8Array) => {
       try {
         const text = decoder.decode(raw)
@@ -69,7 +71,7 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
     }, { reliable: true })
 
     return unsub
-  }, [subscribeData])
+  }, [subscribeData, dataChannelReady])
 
   const send = useCallback(
     (msg: GameMessage, target?: string) => {
