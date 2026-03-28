@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Box, Button, HStack, SimpleGrid, Spinner, Text, VStack } from "@chakra-ui/react"
 import CardBattle from "./Card"
-import type { Card, RoundResult, ElementAdvantage } from "../../shared/types"
+import ReactionBar from "./ReactionBar"
+import ReactionToast from "./ReactionToast"
+import OpponentCardBacks from "./OpponentCardBacks"
+import type { Card, ReactionId, RoundResult, ElementAdvantage } from "../../shared/types"
 
 /* ── Props ─────────────────────────────────────────────────────── */
 
@@ -23,6 +26,17 @@ interface BattleArenaProps {
   currentRound: number
   usedIndices: number[]
   allRounds: RoundResult[]
+  // Live interactivity
+  isSolo: boolean
+  onSendReaction: (id: ReactionId) => void
+  incomingReaction: { reactionId: ReactionId; ts: number } | null
+  reactionCooldown: boolean
+  opponentCardCount: number
+  opponentUsedIndices: number[]
+  opponentHoveredIndex: number | null
+  onHoverCard: (index: number | null) => void
+  onShuffle: () => void
+  opponentShuffled: number
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────── */
@@ -85,6 +99,22 @@ const BATTLE_KEYFRAMES = `
   0%   { transform: scale(0.8); opacity: 0; }
   60%  { transform: scale(1.1); }
   100% { transform: scale(1); opacity: 1; }
+}
+@keyframes slideDownFade {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(30px) scale(0.95); opacity: 0; }
+}
+@keyframes selectedPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@keyframes shuffleGather {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  40%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.88); opacity: 0.7; }
+  50%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(calc(var(--gather-rot) * -0.6)) scale(0.88); opacity: 0.7; }
+  60%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.88); opacity: 0.7; }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
 }
 `
 
@@ -176,7 +206,7 @@ function CardSlot({
       }}
       borderRadius={`${Math.max(10, Math.round(18 * ratio))}px`}
     >
-      <CardBattle card={card} width={cardWidth} height={cardHeight} />
+      <CardBattle card={card} width={cardWidth} height={cardHeight} animate />
 
       {/* Damage number floating up */}
       {showDamage && damage != null && (
@@ -231,6 +261,104 @@ function CardSlot({
           />
         </Box>
       )}
+    </Box>
+  )
+}
+
+/* ── FlipCard (3D reveal) ──────────────────────────────────────── */
+
+const ELEMENT_GLOW: Record<string, string> = {
+  fire: "rgba(255, 107, 0, 0.4)",
+  water: "rgba(0, 136, 255, 0.4)",
+  nature: "rgba(0, 204, 68, 0.4)",
+  neutral: "rgba(153, 51, 255, 0.4)",
+}
+
+function FlipCard({
+  card,
+  flipped,
+  delay,
+  cardWidth,
+  cardHeight,
+}: {
+  card: Card
+  flipped: boolean
+  delay: string
+  cardWidth: number
+  cardHeight: number
+}) {
+  const ratio = cardWidth / 280
+  const borderRadius = `${Math.max(10, Math.round(16 * ratio))}px`
+  const glowColor = ELEMENT_GLOW[card.element] ?? ELEMENT_GLOW.neutral
+
+  return (
+    <Box w={`${cardWidth}px`} h={`${cardHeight}px`} style={{ perspective: "800px" }}>
+      <Box
+        w="full"
+        h="full"
+        position="relative"
+        style={{
+          transformStyle: "preserve-3d",
+          WebkitTransformStyle: "preserve-3d",
+          transition: "transform 800ms ease-in-out",
+          transitionDelay: delay,
+          transform: flipped ? "rotateY(0deg)" : "rotateY(180deg)",
+        } as React.CSSProperties}
+      >
+        {/* Front face — the actual card */}
+        <Box
+          position="absolute"
+          inset="0"
+          style={{
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+          } as React.CSSProperties}
+        >
+          <CardBattle card={card} width={cardWidth} height={cardHeight} animate={flipped} />
+        </Box>
+
+        {/* Back face — card back design */}
+        <Box
+          position="absolute"
+          inset="0"
+          borderRadius={borderRadius}
+          border="3px solid rgba(184, 134, 11, 0.6)"
+          overflow="hidden"
+          style={{
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            transform: "rotateY(180deg)",
+          } as React.CSSProperties}
+          bg="linear-gradient(145deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%)"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Box
+            w="85%"
+            h="90%"
+            border="1px solid rgba(184, 134, 11, 0.3)"
+            borderRadius={`${Math.max(6, Math.round(10 * ratio))}px`}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            bg="radial-gradient(ellipse, rgba(184,134,11,0.08) 0%, transparent 70%)"
+            boxShadow={`inset 0 0 30px ${glowColor}`}
+          >
+            <Text
+              fontSize={`${Math.max(14, Math.round(28 * ratio))}px`}
+              fontWeight="900"
+              fontFamily="'Cinzel', Georgia, serif"
+              color="rgba(184, 134, 11, 0.5)"
+              letterSpacing="0.1em"
+              textShadow={`0 0 20px ${glowColor}`}
+              userSelect="none"
+            >
+              SD
+            </Text>
+          </Box>
+        </Box>
+      </Box>
     </Box>
   )
 }
@@ -314,6 +442,13 @@ function PickingPhase({
   onPickCard,
   usedIndices,
   currentRound,
+  opponentCardCount,
+  opponentUsedIndices,
+  opponentHoveredIndex,
+  onHoverCard,
+  onShuffle,
+  opponentShuffled,
+  isSolo,
 }: {
   myCards: Card[]
   selectedIndex: number | null
@@ -321,9 +456,36 @@ function PickingPhase({
   onPickCard: (index: number) => void
   usedIndices: number[]
   currentRound: number
+  opponentCardCount: number
+  opponentUsedIndices: number[]
+  opponentHoveredIndex: number | null
+  onHoverCard: (index: number | null) => void
+  onShuffle: () => void
+  opponentShuffled: number
+  isSolo: boolean
 }) {
   const picked = selectedIndex !== null
   const usedSet = new Set(usedIndices)
+
+  // Throttle hover events
+  const lastHoverTs = useRef(0)
+  const handleHover = (index: number | null) => {
+    const now = Date.now()
+    if (now - lastHoverTs.current < 80) return
+    lastHoverTs.current = now
+    onHoverCard(index)
+  }
+
+  // Shuffle animation state
+  const [isShuffling, setIsShuffling] = useState(false)
+  const handleShuffle = () => {
+    if (picked || isShuffling) return
+    setIsShuffling(true)
+    setTimeout(() => {
+      onShuffle()
+      setIsShuffling(false)
+    }, 700)
+  }
 
   const PICK_CARD_W = 116
   const PICK_CARD_H = 166
@@ -340,10 +502,29 @@ function PickingPhase({
         Round {currentRound}
       </Text>
 
+      {/* Opponent card backs */}
+      {opponentCardCount > 0 && (
+        <OpponentCardBacks
+          cardCount={opponentCardCount}
+          usedIndices={opponentUsedIndices}
+          hoveredIndex={opponentHoveredIndex}
+          opponentPicked={opponentPicked}
+          shuffleCounter={opponentShuffled}
+        />
+      )}
+
       <SimpleGrid columns={{ base: 2, md: 3 }} gap="3" justifyItems="center" w="full">
-        {myCards.map((card, i) => {
+        {(() => {
+          const activeCards = myCards.map((_, idx) => idx).filter(idx => !usedSet.has(idx))
+          const centerPos = (activeCards.length - 1) / 2
+          const CARD_STRIDE = PICK_CARD_W + 12 // card width + gap
+
+          return myCards.map((card, i) => {
           const isUsed = usedSet.has(i)
           const isPickable = !picked && !isUsed
+          const activePos = activeCards.indexOf(i)
+          const gatherX = activePos >= 0 ? -((activePos - centerPos) * CARD_STRIDE) : 0
+          const gatherRot = activePos >= 0 ? (activePos - centerPos) * 8 : 0
 
           return (
             <Box
@@ -353,21 +534,30 @@ function PickingPhase({
               position="relative"
               cursor={isPickable ? "pointer" : "default"}
               onClick={() => isPickable && onPickCard(i)}
-              opacity={isUsed ? 0.25 : picked && selectedIndex !== i ? 0.4 : 1}
-              transition="opacity 0.3s, transform 0.2s"
+              onPointerEnter={() => isPickable && !isSolo && handleHover(i)}
+              onPointerLeave={() => !isSolo && handleHover(null)}
+              opacity={isUsed ? 0.25 : 1}
+              transition={!picked && !isUsed ? "transform 0.2s" : undefined}
               _hover={isPickable ? { transform: "translateY(-4px)" } : undefined}
               style={
-                isUsed
-                  ? undefined
-                  : !picked
-                    ? { animation: "pickGlow 2s ease-in-out infinite" }
-                    : selectedIndex === i
-                      ? { animation: "winnerGlow 1.5s ease-in-out infinite" }
-                      : undefined
+                isShuffling && !isUsed
+                  ? {
+                      "--gather-x": `${gatherX}px`,
+                      "--gather-y": "0px",
+                      "--gather-rot": `${gatherRot}deg`,
+                      animation: "shuffleGather 700ms cubic-bezier(0.34,1.56,0.64,1) both",
+                    } as React.CSSProperties
+                  : isUsed
+                    ? undefined
+                    : !picked
+                      ? { animation: "pickGlow 2s ease-in-out infinite" }
+                      : selectedIndex === i
+                        ? { animation: "selectedPop 400ms cubic-bezier(0.34,1.56,0.64,1) both, winnerGlow 1.5s ease-in-out infinite 400ms" }
+                        : { animation: "slideDownFade 400ms ease-out forwards" }
               }
               borderRadius="12px"
               overflow="visible"
-              pointerEvents={isUsed ? "none" : "auto"}
+              pointerEvents={isUsed || (picked && selectedIndex !== i) ? "none" : "auto"}
             >
               <CardBattle card={card} width={PICK_CARD_W} height={PICK_CARD_H} />
 
@@ -416,8 +606,27 @@ function PickingPhase({
               )}
             </Box>
           )
-        })}
+        })
+        })()}
       </SimpleGrid>
+
+      {/* Shuffle button */}
+      {!picked && !isShuffling && (
+        <Button
+          size="sm"
+          variant="outline"
+          colorPalette="orange"
+          onClick={handleShuffle}
+          fontFamily="'Cinzel', Georgia, serif"
+          fontWeight="600"
+          fontSize="xs"
+          letterSpacing="0.05em"
+          opacity={0.7}
+          _hover={{ opacity: 1 }}
+        >
+          Shuffle
+        </Button>
+      )}
 
       {/* Status text */}
       {picked ? (
@@ -425,7 +634,7 @@ function PickingPhase({
           {!opponentPicked && <Spinner size="sm" color="accent" />}
           <Text color="fg.muted" fontWeight="500" fontSize="md">
             {opponentPicked
-              ? "Both ready — resolving battle..."
+              ? "Both ready \u2014 resolving battle..."
               : "Waiting for opponent\u2019s pick..."}
           </Text>
         </HStack>
@@ -447,6 +656,7 @@ function RevealPhase({
   roundResult: RoundResult
   isHost: boolean
 }) {
+  const [flipped, setFlipped] = useState(false)
   const myCard = getMyCard(roundResult, isHost)
   const oppCard = getOppCard(roundResult, isHost)
   const myAdv = getMyAdvantage(roundResult, isHost)
@@ -454,6 +664,11 @@ function RevealPhase({
 
   const BATTLE_CARD_W = 170
   const BATTLE_CARD_H = 243
+
+  useEffect(() => {
+    const timer = setTimeout(() => setFlipped(true), 300)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <VStack gap="2" align="center" w="full">
@@ -467,13 +682,13 @@ function RevealPhase({
         Battle!
       </Text>
 
-      {/* Opponent's card (top) */}
-      <CardSlot card={oppCard} animation="slideFromTop" delay="0ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
+      {/* Opponent's card (top) — flips first */}
+      <FlipCard card={oppCard} flipped={flipped} delay="0ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
 
       <VsBadge />
 
-      {/* My card (bottom) */}
-      <CardSlot card={myCard} animation="slideFromBottom" delay="300ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
+      {/* My card (bottom) — flips second */}
+      <FlipCard card={myCard} flipped={flipped} delay="400ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
 
       {/* Element advantage text */}
       {advText && (
@@ -489,7 +704,7 @@ function RevealPhase({
           }
           style={{
             animation: "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
-            animationDelay: "1s",
+            animationDelay: "1.5s",
           }}
         >
           {advText}
@@ -820,6 +1035,16 @@ export default function BattleArena({
   currentRound,
   usedIndices,
   allRounds,
+  isSolo,
+  onSendReaction,
+  incomingReaction,
+  reactionCooldown,
+  opponentCardCount,
+  opponentUsedIndices,
+  opponentHoveredIndex,
+  onHoverCard,
+  onShuffle,
+  opponentShuffled,
 }: BattleArenaProps) {
   // Auto-advance from REVEAL to RESOLUTION after dramatic pause
   const [localPhase, setLocalPhase] = useState<BattlePhase>(phase)
@@ -830,7 +1055,7 @@ export default function BattleArena({
 
   useEffect(() => {
     if (localPhase === "REVEAL") {
-      const timer = setTimeout(() => setLocalPhase("RESOLUTION"), 2500)
+      const timer = setTimeout(() => setLocalPhase("RESOLUTION"), 3000)
       return () => clearTimeout(timer)
     }
   }, [localPhase])
@@ -839,7 +1064,10 @@ export default function BattleArena({
     <>
       <style>{BATTLE_KEYFRAMES}</style>
 
-      <Box w="full" maxW="500px" px="2" maxH="100dvh" display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+      <Box w="full" maxW="500px" px="2" maxH="100dvh" display="flex" flexDirection="column" alignItems="center" justifyContent="center" position="relative">
+        {/* Reaction toast overlay */}
+        <ReactionToast reaction={incomingReaction} />
+
         {/* Score banner — show during picking, reveal, resolution, round-summary */}
         {localPhase !== "MATCH_END" && (
           <ScoreBanner scoreA={scoreA} scoreB={scoreB} currentRound={currentRound} isHost={isHost} />
@@ -853,6 +1081,13 @@ export default function BattleArena({
             onPickCard={onPickCard}
             usedIndices={usedIndices}
             currentRound={currentRound}
+            opponentCardCount={opponentCardCount}
+            opponentUsedIndices={opponentUsedIndices}
+            opponentHoveredIndex={opponentHoveredIndex}
+            onHoverCard={onHoverCard}
+            onShuffle={onShuffle}
+            opponentShuffled={opponentShuffled}
+            isSolo={isSolo}
           />
         )}
 
@@ -885,6 +1120,11 @@ export default function BattleArena({
           />
         )}
       </Box>
+
+      {/* Reaction bar */}
+      {!isSolo && (
+        <ReactionBar onSend={onSendReaction} cooldown={reactionCooldown} />
+      )}
     </>
   )
 }

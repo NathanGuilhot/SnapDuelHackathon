@@ -228,6 +228,7 @@ export default function HandBuilder({
                     height={SLOT_H}
                     aiImageUrl={latestCard?.id === card.id ? aiImageUrl : undefined}
                     aiGenerating={latestCard?.id === card.id ? aiGenerating : false}
+                    animate={latestCard?.id === card.id}
                   />
                 </Box>
                 {!handReady && (

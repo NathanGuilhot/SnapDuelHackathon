@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react"
 import { useConnection, useDataChannel, usePeers } from "@fishjam-cloud/react-client"
 import { snapLog } from "../../shared/debug"
-import type { GameMessage, GameEnvelope, PeerMetadata } from "../../shared/types"
+import type { GameMessage, GameEnvelope, PeerMetadata, PresenceMessage, PresenceEnvelope } from "../../shared/types"
 
 type MessageHandlers = {
   [K in GameMessage["type"]]?: (msg: Extract<GameMessage, { type: K }>, from: string) => void
@@ -10,12 +10,14 @@ type MessageHandlers = {
 interface UseGameChannelOptions {
   isHost: boolean
   handlers?: MessageHandlers
+  onPresence?: (msg: PresenceMessage, from: string) => void
 }
 
 interface UseGameChannelReturn {
   ready: boolean
   broadcast: (msg: GameMessage) => void
   sendTo: (peerId: string, msg: GameMessage) => void
+  publishPresence: (msg: PresenceMessage) => void
   localPeerId: string | null
 }
 
@@ -34,6 +36,9 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
 
   const handlersRef = useRef(options.handlers)
   handlersRef.current = options.handlers
+
+  const onPresenceRef = useRef(options.onPresence)
+  onPresenceRef.current = options.onPresence
 
   const localPeerIdRef = useRef<string | null>(null)
   localPeerIdRef.current = localPeer?.id ?? null
@@ -109,6 +114,55 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
     }
   }, [subscribeData, peerStatus])
 
+  // Subscribe to lossy channel for presence data (hover state)
+  useEffect(() => {
+    if (peerStatus !== "connected") return
+
+    let cancelled = false
+    let unsub: (() => void) | undefined
+    let retryTimeout: ReturnType<typeof setTimeout> | undefined
+    let retries = 0
+    const MAX_RETRIES = 5
+    const RETRY_DELAY_MS = 100
+
+    function trySubscribe() {
+      if (cancelled) return
+      try {
+        unsub = subscribeData((raw: Uint8Array) => {
+          try {
+            const text = decoder.decode(raw)
+            const envelope: PresenceEnvelope = JSON.parse(text)
+
+            if (envelope.from === localPeerIdRef.current) return
+
+            if (onPresenceRef.current) {
+              onPresenceRef.current(envelope.payload, envelope.from)
+            }
+          } catch {
+            // Silently ignore malformed lossy messages
+          }
+        }, { reliable: false })
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          e.message.includes("WebRTC is not initialized") &&
+          retries < MAX_RETRIES
+        ) {
+          retries++
+          retryTimeout = setTimeout(trySubscribe, RETRY_DELAY_MS)
+        }
+      }
+    }
+
+    trySubscribe()
+
+    return () => {
+      cancelled = true
+      if (retryTimeout) clearTimeout(retryTimeout)
+      unsub?.()
+    }
+  }, [subscribeData, peerStatus])
+
   const send = useCallback(
     (msg: GameMessage, target?: string) => {
       const peerId = localPeerIdRef.current
@@ -140,10 +194,27 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
     [send],
   )
 
+  const publishPresence = useCallback(
+    (msg: PresenceMessage) => {
+      const peerId = localPeerIdRef.current
+      if (!dataChannelReady || !peerId) return
+
+      const envelope: PresenceEnvelope = {
+        from: peerId,
+        ts: Date.now(),
+        payload: msg,
+      }
+
+      publishData(encoder.encode(JSON.stringify(envelope)), { reliable: false })
+    },
+    [dataChannelReady, publishData],
+  )
+
   return {
     ready: dataChannelReady,
     broadcast,
     sendTo,
+    publishPresence,
     localPeerId: localPeer?.id ?? null,
   }
 }

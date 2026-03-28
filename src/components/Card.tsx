@@ -110,8 +110,9 @@ const KEYFRAMES_CSS = `
   100% { box-shadow: 0 0 8px 2px var(--glow-color), 0 0 16px 4px var(--glow-color); }
 }
 @keyframes aiImageFadeIn {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
+  0%   { opacity: 0; filter: brightness(1.8); transform: scale(1.04); }
+  40%  { opacity: 1; filter: brightness(1.4); transform: scale(1.02); }
+  100% { opacity: 1; filter: brightness(1);   transform: scale(1); }
 }
 @keyframes aiShimmer {
   0%   { transform: translateX(-100%); }
@@ -165,9 +166,10 @@ interface CardBattleProps {
   aiGenerating?: boolean
   width?: number   // default 280
   height?: number  // default 400
+  animate?: boolean // default false — only play summon animations when true
 }
 
-export default function CardBattle({ card, aiImageUrl, aiGenerating, width, height }: CardBattleProps) {
+export default function CardBattle({ card, aiImageUrl, aiGenerating, width, height, animate = false }: CardBattleProps) {
   const theme = ELEMENT_THEMES[card.element]
   const elementSrc = ELEMENT_IMAGE[card.element]
 
@@ -210,21 +212,27 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
           {
             "--glow-color": theme.glow,
             background: theme.gradient,
-            animation:
-              "cardSummonScale 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both, cardSummonGlow 800ms ease-out both",
+            ...(animate
+              ? {
+                  animation:
+                    "cardSummonScale 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both, cardSummonGlow 800ms ease-out both",
+                }
+              : {}),
           } as React.CSSProperties
         }
       >
         {/* Brightness flash overlay */}
-        <Box
-          position="absolute"
-          inset="0"
-          bg="white"
-          borderRadius={`${Math.max(7, Math.round(13 * r))}px`}
-          pointerEvents="none"
-          zIndex={10}
-          style={{ animation: "cardSummonFlash 400ms ease-out forwards" }}
-        />
+        {animate && (
+          <Box
+            position="absolute"
+            inset="0"
+            bg="white"
+            borderRadius={`${Math.max(7, Math.round(13 * r))}px`}
+            pointerEvents="none"
+            zIndex={10}
+            style={{ animation: "cardSummonFlash 400ms ease-out forwards" }}
+          />
+        )}
 
         {/* Inner gold-bordered frame */}
         <Box
@@ -312,7 +320,7 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
                   display: "block",
                   position: "absolute",
                   inset: 0,
-                  animation: "aiImageFadeIn 600ms ease-out forwards",
+                  animation: "aiImageFadeIn 1200ms ease-out forwards",
                 }}
               />
             )}

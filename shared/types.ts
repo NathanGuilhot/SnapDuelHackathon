@@ -1,5 +1,7 @@
 export type Element = "fire" | "water" | "nature" | "neutral";
 
+export type ReactionId = "gg" | "oops" | "revenge" | "wow" | "think" | "fear";
+
 export type PeerMetadata = {
   name: string;
   isHost: boolean;
@@ -57,11 +59,25 @@ export type GameMessage =
   | { type: "ROUND_REVEAL"; result: RoundResult }
   | { type: "NEXT_ROUND"; round: number; scoreA: number; scoreB: number }
   | { type: "MATCH_RESULT"; winner: string | null; rounds: RoundResult[]; scoreA: number; scoreB: number }
-  | { type: "PHASE_CHANGE"; phase: GamePhase };
+  | { type: "PHASE_CHANGE"; phase: GamePhase }
+  | { type: "REACTION"; playerId: string; reactionId: ReactionId }
+  | { type: "SHUFFLE"; playerId: string; newOrder: number[] };
 
 export interface GameEnvelope {
   from: string;
   target?: string;
   ts: number;
   payload: GameMessage;
+}
+
+export type PresenceMessage = {
+  type: "HOVER";
+  playerId: string;
+  hoveredIndex: number | null;
+};
+
+export interface PresenceEnvelope {
+  from: string;
+  ts: number;
+  payload: PresenceMessage;
 }

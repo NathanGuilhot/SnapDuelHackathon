@@ -23,7 +23,7 @@ import { useGameChannel } from "./hooks/useGameChannel"
 import { useAiImage } from "./hooks/useAiImage"
 import { resolveBattle } from "../shared/battle.ts"
 import { createMatchState, applyRoundResult, isMatchOver, getMatchWinner, getAvailableIndices } from "../shared/match.ts"
-import type { Card, GameMessage, MatchState, PeerMetadata, RoundResult } from "../shared/types.ts"
+import type { Card, GameMessage, MatchState, PeerMetadata, PresenceMessage, ReactionId, RoundResult } from "../shared/types.ts"
 import { HAND_SIZE } from "../shared/constants.ts"
 
 type Screen =
@@ -71,6 +71,13 @@ function App() {
   const [matchWinner, setMatchWinner] = useState<"A" | "B" | "draw" | null>(null)
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
+
+  // Live interactivity state
+  const [incomingReaction, setIncomingReaction] = useState<{ reactionId: ReactionId; ts: number } | null>(null)
+  const [reactionCooldown, setReactionCooldown] = useState(false)
+  const [opponentHoveredIndex, setOpponentHoveredIndex] = useState<number | null>(null)
+  const [opponentShuffled, setOpponentShuffled] = useState(0)
+  const hoverStaleRef = useRef<ReturnType<typeof setTimeout>>()
 
   // AI illustration polling
   const { aiImageUrl, aiImageState } = useAiImage(card?.id ?? null)
@@ -135,6 +142,22 @@ function App() {
         snapLog("PHASE_CHANGE_RECV", { phase: msg.phase })
         if (msg.phase === "PICKING") setScreen("picking")
       },
+
+      REACTION: (msg: GameMessage & { type: "REACTION" }) => {
+        setIncomingReaction({ reactionId: msg.reactionId, ts: Date.now() })
+      },
+
+      SHUFFLE: (_msg: GameMessage & { type: "SHUFFLE" }) => {
+        setOpponentShuffled((prev) => prev + 1)
+      },
+    },
+    onPresence: (msg: PresenceMessage) => {
+      if (msg.type === "HOVER") {
+        setOpponentHoveredIndex(msg.hoveredIndex)
+        // Staleness timeout: clear if no update in 300ms
+        if (hoverStaleRef.current) clearTimeout(hoverStaleRef.current)
+        hoverStaleRef.current = setTimeout(() => setOpponentHoveredIndex(null), 300)
+      }
     },
   })
 
@@ -400,6 +423,56 @@ function App() {
     }
   }
 
+  function handleSendReaction(reactionId: ReactionId) {
+    if (reactionCooldown || isSolo) return
+    gameChannel.broadcast({
+      type: "REACTION",
+      playerId: gameChannel.localPeerId!,
+      reactionId,
+    })
+    setReactionCooldown(true)
+    setTimeout(() => setReactionCooldown(false), 2000)
+  }
+
+  function handleHoverCard(index: number | null) {
+    if (isSolo) return
+    gameChannel.publishPresence({
+      type: "HOVER",
+      playerId: gameChannel.localPeerId!,
+      hoveredIndex: index,
+    })
+  }
+
+  function handleShuffle() {
+    if (selectedIndex !== null) return
+    const usedSet = new Set(matchState?.usedIndicesA ?? [])
+    const available = hand.map((_, i) => i).filter((i) => !usedSet.has(i))
+    if (available.length <= 1) return
+
+    // Fisher-Yates on available indices
+    const shuffledIndices = [...available]
+    for (let i = shuffledIndices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]]
+    }
+
+    // Build new hand with shuffled available cards
+    const newHand = [...hand]
+    const availableCards = available.map((i) => hand[i])
+    shuffledIndices.forEach((targetIdx, i) => {
+      newHand[targetIdx] = availableCards[i]
+    })
+    setHand(newHand)
+
+    if (!isSolo) {
+      gameChannel.broadcast({
+        type: "SHUFFLE",
+        playerId: gameChannel.localPeerId!,
+        newOrder: shuffledIndices,
+      })
+    }
+  }
+
   function handlePickCard(index: number) {
     setSelectedIndex(index)
 
@@ -447,6 +520,10 @@ function App() {
     setLoading(false)
     setError(null)
     setDisconnected(false)
+    setIncomingReaction(null)
+    setReactionCooldown(false)
+    setOpponentHoveredIndex(null)
+    setOpponentShuffled(0)
     hadOpponent.current = false
 
     if (isSolo) {
@@ -477,6 +554,10 @@ function App() {
     setCardBlob(null)
     setLoading(false)
     setError(null)
+    setIncomingReaction(null)
+    setReactionCooldown(false)
+    setOpponentHoveredIndex(null)
+    setOpponentShuffled(0)
 
     setScreen("card-building")
     snapLog("REMATCH")
@@ -672,6 +753,16 @@ function App() {
           currentRound={matchState?.currentRound ?? 1}
           usedIndices={myUsedIndices}
           allRounds={matchState?.rounds ?? []}
+          isSolo={isSolo}
+          onSendReaction={handleSendReaction}
+          incomingReaction={incomingReaction}
+          reactionCooldown={reactionCooldown}
+          opponentCardCount={opponentCards.length}
+          opponentUsedIndices={matchState?.usedIndicesB ?? []}
+          opponentHoveredIndex={opponentHoveredIndex}
+          onHoverCard={handleHoverCard}
+          onShuffle={handleShuffle}
+          opponentShuffled={opponentShuffled}
         />
       )}
     </Box>
