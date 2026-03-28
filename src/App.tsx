@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import {
   Box,
   Button,
@@ -11,17 +11,54 @@ import {
 } from "@chakra-ui/react"
 import CameraCapture from "./components/CameraCapture"
 import CardBattle from "./components/Card"
+import CreateRoom from "./components/CreateRoom"
+import JoinRoom from "./components/JoinRoom"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { snapLog } from "../shared/debug.ts"
 import type { Card } from "../shared/types.ts"
 
+type Screen = "lobby" | "join" | "card-building"
+
+function extractRoomCode(): string | null {
+  const path = window.location.pathname.replace(/^\//, "")
+  if (/^[A-HJ-NP-Z]{4}$/.test(path)) return path
+  return null
+}
+
 function App() {
+  // Screen & role management
+  const [joinCode, setJoinCode] = useState<string | null>(() => extractRoomCode())
+  const [isHost, setIsHost] = useState(() => !extractRoomCode())
+  const [screen, setScreen] = useState<Screen>(() =>
+    extractRoomCode() ? "join" : "lobby",
+  )
+  const [isSolo, setIsSolo] = useState(false)
+
+  // Card generation state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [geminiBlob, setGeminiBlob] = useState<Blob | null>(null)
   const [cardBlob, setCardBlob] = useState<Blob | null>(null)
   const [card, setCard] = useState<Card | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleOpponentJoined = useCallback(() => {
+    setScreen("card-building")
+    window.history.replaceState({}, "", "/")
+    snapLog("OPPONENT_JOINED_TRANSITION")
+  }, [])
+
+  const handleJoinWithCode = useCallback((code: string) => {
+    setJoinCode(code)
+    setIsHost(false)
+    setScreen("join")
+  }, [])
+
+  const handleBothConnected = useCallback(() => {
+    setScreen("card-building")
+    window.history.replaceState({}, "", "/")
+    snapLog("BOTH_CONNECTED_TRANSITION", { isHost })
+  }, [isHost])
 
   async function generateCard(resized: Blob, cropped: Blob) {
     setLoading(true)
@@ -91,6 +128,10 @@ function App() {
     setCard(null)
     setLoading(false)
     setError(null)
+    if (isSolo) {
+      setIsSolo(false)
+      setScreen("lobby")
+    }
   }
 
   const hasCapture =
@@ -104,6 +145,7 @@ function App() {
       alignItems="center"
       justifyContent="center"
       flexGrow={1}
+      position="relative"
       p={{ base: "6 4", lg: "8 5" }}
       gap="4"
     >
@@ -130,70 +172,107 @@ function App() {
         </Text>
       </VStack>
 
-      {hasCapture ? (
-        <VStack gap="4" p="5" align="center" w="full" maxW="400px">
-          {card ? (
-            <CardBattle card={card} />
-          ) : loading ? (
-            <>
-              <Image
-                src={previewUrl}
-                alt="Captured photo"
-                w="full"
-                borderRadius="xl"
-                border="2px solid"
-                borderColor="accent"
-                objectFit="cover"
-                aspectRatio="1/1"
-                shadow="0 0 20px rgba(242, 116, 5, 0.2)"
-              />
-              <HStack gap="3">
-                <Spinner size="sm" color="accent" />
-                <Text color="accent" fontWeight="500" fontSize="lg">
-                  Generating card...
-                </Text>
-              </HStack>
-            </>
-          ) : error ? (
-            <>
-              <Image
-                src={previewUrl}
-                alt="Captured photo"
-                w="full"
-                borderRadius="xl"
-                border="2px solid"
-                borderColor="border"
-                objectFit="cover"
-                aspectRatio="1/1"
-                shadow="0 0 20px rgba(242, 116, 5, 0.1)"
-              />
-              <Text color="fg.error" fontWeight="500" fontSize="md">
-                {error}
-              </Text>
+      {/* Lobby — auto-creates room, waits for opponent */}
+      {screen === "lobby" && (
+        <>
+          <Button
+            position="absolute"
+            top={{ base: "4", lg: "6" }}
+            right={{ base: "4", lg: "6" }}
+            size="sm"
+            variant="outline"
+            colorPalette="orange"
+            onClick={() => {
+              setIsSolo(true)
+              setScreen("card-building")
+            }}
+          >
+            Solo mode
+          </Button>
+          <CreateRoom
+            onOpponentJoined={handleOpponentJoined}
+            onJoinWithCode={handleJoinWithCode}
+          />
+        </>
+      )}
+
+      {/* Guest joining — auto-join from URL or modal code entry */}
+      {screen === "join" && (
+        <JoinRoom
+          initialCode={joinCode ?? undefined}
+          onBothConnected={handleBothConnected}
+        />
+      )}
+
+      {/* Card building screen */}
+      {screen === "card-building" && (
+        <>
+          {hasCapture ? (
+            <VStack gap="4" p="5" align="center" w="full" maxW="400px">
+              {card ? (
+                <CardBattle card={card} />
+              ) : loading ? (
+                <>
+                  <Image
+                    src={previewUrl}
+                    alt="Captured photo"
+                    w="full"
+                    borderRadius="xl"
+                    border="2px solid"
+                    borderColor="accent"
+                    objectFit="cover"
+                    aspectRatio="1/1"
+                    shadow="0 0 20px rgba(242, 116, 5, 0.2)"
+                  />
+                  <HStack gap="3">
+                    <Spinner size="sm" color="accent" />
+                    <Text color="accent" fontWeight="500" fontSize="lg">
+                      Generating card...
+                    </Text>
+                  </HStack>
+                </>
+              ) : error ? (
+                <>
+                  <Image
+                    src={previewUrl}
+                    alt="Captured photo"
+                    w="full"
+                    borderRadius="xl"
+                    border="2px solid"
+                    borderColor="border"
+                    objectFit="cover"
+                    aspectRatio="1/1"
+                    shadow="0 0 20px rgba(242, 116, 5, 0.1)"
+                  />
+                  <Text color="fg.error" fontWeight="500" fontSize="md">
+                    {error}
+                  </Text>
+                  <Button
+                    size="lg"
+                    colorPalette="orange"
+                    w="full"
+                    maxW="320px"
+                    onClick={handleRetry}
+                  >
+                    Retry
+                  </Button>
+                </>
+              ) : null}
               <Button
                 size="lg"
-                colorPalette="orange"
+                variant="outline"
+                colorPalette="teal"
                 w="full"
                 maxW="320px"
-                onClick={handleRetry}
+                onClick={handleReset}
               >
-                Retry
+                Start Over
               </Button>
-            </>
-          ) : null}
-          <Button
-            size="lg"
-            variant="outline"
-            colorPalette="teal"
-            w="full"
-            maxW="320px"
-            onClick={handleReset}
-          >
-            Start Over
-          </Button>
-        </VStack>
-      ) : (
-        <CameraCapture onCapture={handleCapture} />
+            </VStack>
+          ) : (
+            <CameraCapture onCapture={handleCapture} />
+          )}
+        </>
       )}
     </Box>
   )

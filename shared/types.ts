@@ -1,5 +1,10 @@
 export type Element = "fire" | "water" | "nature" | "neutral";
 
+export type PeerMetadata = {
+  name: string;
+  isHost: boolean;
+};
+
 export type GamePhase =
   | "LOBBY"
   | "HAND_BUILDING"
