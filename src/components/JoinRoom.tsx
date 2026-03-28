@@ -130,13 +130,13 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
           </Heading>
         </VStack>
 
-        <Badge
+        {/* <Badge
           colorPalette={STATUS_COLOR[peerStatus] ?? "gray"}
           size="lg"
           textTransform="capitalize"
         >
           {peerStatus}
-        </Badge>
+        </Badge> */}
 
         {error ? (
           <>

@@ -15,6 +15,8 @@ type AiImageStatus =
   | { state: "failed"; reason: string };
 
 const aiImageStore = new Map<string, AiImageStatus>();
+const aiImageResolvers = new Map<string, (status: AiImageStatus) => void>();
+const aiImagePromises = new Map<string, Promise<AiImageStatus>>();
 
 // ── Module-level refs (set during registration) ──────────────────
 let ai: GoogleGenAI;
@@ -42,12 +44,27 @@ function is429(err: unknown): boolean {
   return String(err).includes('"code":429');
 }
 
+function settleAiImage(cardId: string, status: AiImageStatus): void {
+  aiImageStore.set(cardId, status);
+  const resolve = aiImageResolvers.get(cardId);
+  if (resolve) {
+    resolve(status);
+    aiImageResolvers.delete(cardId);
+  }
+}
+
 // ── Public trigger (fire-and-forget) ─────────────────────────────
 export function triggerNanoBanana(
   cardId: string,
   illustrationPrompt: string,
+  referenceImage?: { base64: string; mimeType: string },
 ): void {
   aiImageStore.set(cardId, { state: "pending" });
+
+  let resolve!: (status: AiImageStatus) => void;
+  const promise = new Promise<AiImageStatus>((r) => { resolve = r; });
+  aiImageResolvers.set(cardId, resolve);
+  aiImagePromises.set(cardId, promise);
 
   (async () => {
     const controller = new AbortController();
@@ -58,9 +75,16 @@ export function triggerNanoBanana(
         snapLog("NANOBANANA_SEND", { cardId, attempt });
 
         try {
+          const contents: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+            { text: illustrationPrompt },
+          ];
+          if (referenceImage) {
+            contents.push({ inlineData: { mimeType: referenceImage.mimeType, data: referenceImage.base64 } });
+          }
+
           const response = await ai.models.generateContent({
             model: "gemini-3.1-flash-image-preview",
-            contents: illustrationPrompt,
+            contents,
             config: {
               responseModalities: ["TEXT", "IMAGE"],
               imageConfig: { aspectRatio: "1:1" },
@@ -77,7 +101,7 @@ export function triggerNanoBanana(
           const imageData = imagePart?.inlineData?.data;
           if (!imageData) {
             snapLog("NANOBANANA_ERROR", { cardId, error: "No image in response" });
-            aiImageStore.set(cardId, { state: "failed", reason: "no_image" });
+            settleAiImage(cardId, { state: "failed", reason: "no_image" });
             return;
           }
 
@@ -88,7 +112,7 @@ export function triggerNanoBanana(
           await writeFile(filePath, buffer);
 
           const url = `/uploads/${filename}`;
-          aiImageStore.set(cardId, { state: "ready", url });
+          settleAiImage(cardId, { state: "ready", url });
           snapLog("NANOBANANA_RECV", { cardId, size: buffer.length });
           return;
         } catch (err) {
@@ -107,10 +131,10 @@ export function triggerNanoBanana(
 
       if (isAbort) {
         snapLog("NANOBANANA_TIMEOUT", { cardId });
-        aiImageStore.set(cardId, { state: "failed", reason: "timeout" });
+        settleAiImage(cardId, { state: "failed", reason: "timeout" });
       } else {
         snapLog("NANOBANANA_ERROR", { cardId, error: String(err) });
-        aiImageStore.set(cardId, { state: "failed", reason: String(err) });
+        settleAiImage(cardId, { state: "failed", reason: String(err) });
       }
     } finally {
       clearTimeout(timer);
@@ -120,7 +144,7 @@ export function triggerNanoBanana(
       cardId,
       error: `Unhandled: ${String(err)}`,
     });
-    aiImageStore.set(cardId, { state: "failed", reason: "unhandled" });
+    settleAiImage(cardId, { state: "failed", reason: "unhandled" });
   });
 }
 
@@ -138,19 +162,25 @@ export function registerNanoBanana(
       const { id } = request.params;
       const status = aiImageStore.get(id);
 
-      if (!status) {
-        return reply.send({ status: "unknown" });
-      }
-
-      if (status.state === "ready") {
+      // Already resolved — return immediately
+      if (status?.state === "ready") {
         return reply.send({ status: "ready", url: status.url });
       }
-
-      if (status.state === "failed") {
+      if (status?.state === "failed") {
         return reply.send({ status: "failed" });
       }
 
-      return reply.send({ status: "pending" });
+      // Pending — wait for the generation to finish
+      const promise = aiImagePromises.get(id);
+      if (!promise) {
+        return reply.send({ status: "unknown" });
+      }
+
+      const result = await promise;
+      if (result.state === "ready") {
+        return reply.send({ status: "ready", url: result.url });
+      }
+      return reply.send({ status: "failed" });
     },
   );
 }

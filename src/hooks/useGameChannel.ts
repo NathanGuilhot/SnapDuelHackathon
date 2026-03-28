@@ -46,36 +46,67 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
     }
   }, [peerStatus, initializeDataChannel])
 
-  // Subscribe as soon as WebRTC is connected (subscribeData works before data channels are created)
+  // Subscribe as soon as WebRTC is connected
+  // Retry if SDK's internal WebRTC object isn't ready yet (race with peerStatus)
   useEffect(() => {
     if (peerStatus !== "connected") return
 
-    const unsub = subscribeData((raw: Uint8Array) => {
+    let cancelled = false
+    let unsub: (() => void) | undefined
+    let retryTimeout: ReturnType<typeof setTimeout> | undefined
+    let retries = 0
+    const MAX_RETRIES = 5
+    const RETRY_DELAY_MS = 100
+
+    function trySubscribe() {
+      if (cancelled) return
       try {
-        const text = decoder.decode(raw)
-        const envelope: GameEnvelope = JSON.parse(text)
+        unsub = subscribeData((raw: Uint8Array) => {
+          try {
+            const text = decoder.decode(raw)
+            const envelope: GameEnvelope = JSON.parse(text)
 
-        // Self-echo guard
-        if (envelope.from === localPeerIdRef.current) return
+            // Self-echo guard
+            if (envelope.from === localPeerIdRef.current) return
 
-        // Directed message filtering
-        if (envelope.target && envelope.target !== localPeerIdRef.current) return
+            // Directed message filtering
+            if (envelope.target && envelope.target !== localPeerIdRef.current) return
 
-        const type = envelope.payload.type
-        const handler = handlersRef.current?.[type] as
-          | ((msg: GameMessage, from: string) => void)
-          | undefined
-        if (handler) {
-          handler(envelope.payload, envelope.from)
-        }
+            const type = envelope.payload.type
+            const handler = handlersRef.current?.[type] as
+              | ((msg: GameMessage, from: string) => void)
+              | undefined
+            if (handler) {
+              handler(envelope.payload, envelope.from)
+            }
 
-        snapLog("DATA_RECV", { type: envelope.payload.type, from: envelope.from })
+            snapLog("DATA_RECV", { type: envelope.payload.type, from: envelope.from })
+          } catch (e) {
+            snapLog("DATA_CHANNEL_PARSE_ERROR", { error: String(e) })
+          }
+        }, { reliable: true })
       } catch (e) {
-        snapLog("DATA_CHANNEL_PARSE_ERROR", { error: String(e) })
+        if (
+          e instanceof Error &&
+          e.message.includes("WebRTC is not initialized") &&
+          retries < MAX_RETRIES
+        ) {
+          retries++
+          snapLog("DATA_SUBSCRIBE_RETRY", { attempt: retries })
+          retryTimeout = setTimeout(trySubscribe, RETRY_DELAY_MS)
+        } else {
+          snapLog("DATA_SUBSCRIBE_ERROR", { error: String(e), retries })
+        }
       }
-    }, { reliable: true })
+    }
 
-    return unsub
+    trySubscribe()
+
+    return () => {
+      cancelled = true
+      if (retryTimeout) clearTimeout(retryTimeout)
+      unsub?.()
+    }
   }, [subscribeData, peerStatus])
 
   const send = useCallback(

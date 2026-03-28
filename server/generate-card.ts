@@ -141,7 +141,10 @@ export function registerGenerateCard(
 
     // 6. Kick off AI illustration in background
     if (card.illustration_prompt) {
-      triggerNanoBanana(card.id, card.illustration_prompt);
+      triggerNanoBanana(card.id, card.illustration_prompt, {
+        base64,
+        mimeType: resized.mimetype,
+      });
     }
 
     // 7. Return card

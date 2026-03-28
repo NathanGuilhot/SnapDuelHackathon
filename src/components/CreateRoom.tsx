@@ -8,7 +8,6 @@ import {
   Spinner,
   Text,
   VStack,
-  Badge,
 } from "@chakra-ui/react"
 import { Check, Copy } from "lucide-react"
 import { useConnection, usePeers, useSandbox } from "@fishjam-cloud/react-client"
@@ -26,13 +25,6 @@ function generateRoomCode(): string {
     { length: 4 },
     () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)],
   ).join("")
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  idle: "gray",
-  connecting: "yellow",
-  connected: "green",
-  error: "red",
 }
 
 interface CreateRoomProps {
@@ -151,13 +143,13 @@ export default function CreateRoom({
   return (
     <VStack gap="6" p="5" align="center" w="full" maxW="400px">
       {/* Connection status */}
-      <Badge
+      {/* <Badge
         colorPalette={STATUS_COLOR[peerStatus] ?? "gray"}
         size="lg"
         textTransform="capitalize"
       >
         {peerStatus}
-      </Badge>
+      </Badge> */}
 
       {/* Room code */}
       <VStack gap="1">
