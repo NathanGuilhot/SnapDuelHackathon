@@ -25,12 +25,18 @@ export interface Card {
   imageUrl: string;
 }
 
+export type ElementAdvantage = "strong" | "weak" | "neutral";
+
 export interface RoundResult {
   round: number;
   cardA: Card;
   cardB: Card;
   damageToA: number;
   damageToB: number;
+  remainingHpA: number;
+  remainingHpB: number;
+  advantageA: ElementAdvantage;
+  advantageB: ElementAdvantage;
   winner: "A" | "B" | "draw";
 }
 
