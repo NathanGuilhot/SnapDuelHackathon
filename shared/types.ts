@@ -39,4 +39,12 @@ export type GameMessage =
   | { type: "HAND_READY"; playerId: string; cardCount: number }
   | { type: "CARD_PICKED"; playerId: string; cardIndex: number }
   | { type: "ROUND_REVEAL"; result: RoundResult }
-  | { type: "MATCH_RESULT"; winner: string | null; rounds: RoundResult[] };
+  | { type: "MATCH_RESULT"; winner: string | null; rounds: RoundResult[] }
+  | { type: "PHASE_CHANGE"; phase: GamePhase };
+
+export interface GameEnvelope {
+  from: string;
+  target?: string;
+  ts: number;
+  payload: GameMessage;
+}

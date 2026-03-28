@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   Box,
   Button,
@@ -15,7 +15,8 @@ import CreateRoom from "./components/CreateRoom"
 import JoinRoom from "./components/JoinRoom"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { snapLog } from "../shared/debug.ts"
-import type { Card } from "../shared/types.ts"
+import { useGameChannel } from "./hooks/useGameChannel"
+import type { Card, GameMessage } from "../shared/types.ts"
 
 type Screen = "lobby" | "join" | "card-building"
 
@@ -41,6 +42,36 @@ function App() {
   const [card, setCard] = useState<Card | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Game protocol — data channel messaging
+  const gameChannel = useGameChannel({
+    isHost,
+    handlers: {
+      PLAYER_READY: (msg: GameMessage & { type: "PLAYER_READY" }, from) =>
+        snapLog("PLAYER_READY_RECV", { from, nickname: msg.nickname }),
+      HAND_READY: (msg: GameMessage & { type: "HAND_READY" }, from) =>
+        snapLog("HAND_READY_RECV", { from, cardCount: msg.cardCount }),
+      CARD_PICKED: (msg: GameMessage & { type: "CARD_PICKED" }, from) =>
+        snapLog("CARD_PICKED_RECV", { from, cardIndex: msg.cardIndex }),
+      ROUND_REVEAL: (msg: GameMessage & { type: "ROUND_REVEAL" }) =>
+        snapLog("ROUND_REVEAL_RECV", { round: msg.result.round }),
+      MATCH_RESULT: (msg: GameMessage & { type: "MATCH_RESULT" }) =>
+        snapLog("MATCH_RESULT_RECV", { winner: msg.winner }),
+      PHASE_CHANGE: (msg: GameMessage & { type: "PHASE_CHANGE" }) =>
+        snapLog("PHASE_CHANGE_RECV", { phase: msg.phase }),
+    },
+  })
+
+  // Auto-send PLAYER_READY when data channel is up — serves as handshake + e2e test
+  useEffect(() => {
+    if (gameChannel.ready && gameChannel.localPeerId && !isSolo) {
+      gameChannel.broadcast({
+        type: "PLAYER_READY",
+        playerId: gameChannel.localPeerId,
+        nickname: isHost ? "host" : "guest",
+      })
+    }
+  }, [gameChannel.ready, gameChannel.localPeerId, isSolo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpponentJoined = useCallback(() => {
     setScreen("card-building")
