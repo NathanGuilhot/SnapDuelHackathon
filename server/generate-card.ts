@@ -18,10 +18,6 @@ export function registerGenerateCard(
 ): void {
   const ai = new GoogleGenAI({ apiKey: opts.geminiApiKey });
 
-  // -------------------------------------------------------------------------
-  // Gemini call with 3s timeout + single retry
-  // -------------------------------------------------------------------------
-
   async function callGeminiOnce(base64: string, mimeType: string) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30_000);
@@ -62,10 +58,6 @@ export function registerGenerateCard(
       return await callGeminiOnce(base64, mimeType);
     }
   }
-
-  // -------------------------------------------------------------------------
-  // POST /api/generate-card
-  // -------------------------------------------------------------------------
 
   app.post("/api/generate-card", async (request, reply) => {
     // 1. Parse multipart

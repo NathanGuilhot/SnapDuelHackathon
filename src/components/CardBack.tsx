@@ -22,9 +22,9 @@ export default function CardBack({ width, height, isHovered, isSelected }: CardB
       transform={isHovered ? "translateY(-4px)" : "translateY(0)"}
       boxShadow={
         isSelected
-          ? "0 0 16px 6px rgba(34,170,68,0.5)"
+          ? "0 4px 16px rgba(0,0,0,0.5), 0 0 0 3px rgba(34,170,68,0.8)"
           : isHovered
-            ? "0 0 12px 3px rgba(242,116,5,0.4)"
+            ? "0 6px 20px rgba(0,0,0,0.5)"
             : "0 2px 8px rgba(0,0,0,0.4)"
       }
     >

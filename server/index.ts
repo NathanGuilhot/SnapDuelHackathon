@@ -13,7 +13,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, "..");
 
-// --- Env validation ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const FISHJAM_ID = process.env.FISHJAM_ID;
 
@@ -26,37 +25,31 @@ if (!FISHJAM_ID) {
   process.exit(1);
 }
 
-// --- Ensure uploads directory exists ---
 const UPLOADS_DIR = join(PROJECT_ROOT, "uploads");
 if (!existsSync(UPLOADS_DIR)) {
   mkdirSync(UPLOADS_DIR, { recursive: true });
   snapLog("INIT", { action: "created uploads directory" });
 }
 
-// --- Build server ---
 const isDev = process.env.NODE_ENV !== "production";
 const PORT = Number(process.env.PORT) || 3001;
 
 const app = Fastify({ logger: true });
 
-// CORS for dev mode
 if (isDev) {
   await app.register(fastifyCors, { origin: true });
   snapLog("INIT", { cors: "enabled (dev mode)" });
 }
 
-// Multipart file uploads
 await app.register(fastifyMultipart, {
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// Serve uploaded card images at /uploads/*
 await app.register(fastifyStatic, {
   root: UPLOADS_DIR,
   prefix: "/uploads/",
 });
 
-// In production, serve Vite build output
 if (!isDev) {
   const DIST_DIR = join(PROJECT_ROOT, "dist");
   await app.register(fastifyStatic, {
@@ -71,7 +64,6 @@ if (!isDev) {
   });
 }
 
-// --- Routes ---
 app.get("/health", async () => {
   return { status: "ok" };
 });
@@ -86,7 +78,6 @@ registerNanoBanana(app, {
   uploadsDir: UPLOADS_DIR,
 });
 
-// --- Start ---
 try {
   await app.listen({ port: PORT, host: "0.0.0.0" });
   snapLog("SERVER_READY", { port: PORT, env: isDev ? "development" : "production" });

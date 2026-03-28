@@ -92,7 +92,6 @@ export default function ReactionToast({ reaction }: ReactionToastProps) {
           px="4"
           py="2"
           border="1px solid rgba(242,116,5,0.4)"
-          boxShadow="0 0 20px rgba(242,116,5,0.2)"
           display="flex"
           alignItems="center"
           gap="2"

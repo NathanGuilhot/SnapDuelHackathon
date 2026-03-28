@@ -55,8 +55,8 @@ const BATTLE_KEYFRAMES = `
   100% { transform: translateY(0) scale(1); }
 }
 @keyframes vsPulse {
-  0%, 100% { transform: scale(1); text-shadow: 0 0 20px rgba(242,116,5,0.6); }
-  50%      { transform: scale(1.15); text-shadow: 0 0 40px rgba(242,116,5,0.9), 0 0 80px rgba(242,116,5,0.4); }
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
 }
 @keyframes damageFloat {
   0%   { transform: translateY(0); opacity: 1; }
@@ -65,10 +65,6 @@ const BATTLE_KEYFRAMES = `
 @keyframes hpDrain {
   0%   { transform: scaleX(var(--hp-from)); }
   100% { transform: scaleX(var(--hp-to)); }
-}
-@keyframes winnerGlow {
-  0%, 100% { box-shadow: 0 0 12px 4px rgba(255,215,0,0.4); }
-  50%      { box-shadow: 0 0 25px 10px rgba(255,215,0,0.7), 0 0 50px 20px rgba(255,215,0,0.3); }
 }
 @keyframes loserDim {
   0%   { filter: brightness(1) grayscale(0); }
@@ -79,18 +75,6 @@ const BATTLE_KEYFRAMES = `
   50%  { transform: scale(1.2); opacity: 1; }
   70%  { transform: scale(0.95); }
   100% { transform: scale(1); }
-}
-@keyframes victoryPulse {
-  0%, 100% { text-shadow: 0 0 20px rgba(255,215,0,0.6), 0 0 40px rgba(255,215,0,0.3); }
-  50%      { text-shadow: 0 0 40px rgba(255,215,0,0.9), 0 0 80px rgba(255,215,0,0.5); }
-}
-@keyframes defeatPulse {
-  0%, 100% { text-shadow: 0 0 20px rgba(224,82,82,0.6); }
-  50%      { text-shadow: 0 0 40px rgba(224,82,82,0.9); }
-}
-@keyframes pickGlow {
-  0%, 100% { box-shadow: 0 0 15px 3px rgba(242,116,5,0.3); }
-  50%      { box-shadow: 0 0 25px 8px rgba(242,116,5,0.6); }
 }
 @keyframes selectedCheck {
   0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
@@ -204,8 +188,8 @@ function CardSlot({
       style={{
         animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both`,
         animationDelay: delay,
-        ...(isWinner ? { animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both, winnerGlow 1.5s ease-in-out infinite` } : {}),
         ...(isLoser ? { animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both, loserDim 800ms ease-out forwards` } : {}),
+        ...(isWinner ? { border: "3px solid #ffd700" } : {}),
       }}
       borderRadius={`${Math.max(10, Math.round(18 * ratio))}px`}
     >
@@ -222,7 +206,7 @@ function CardSlot({
           fontWeight="900"
           fontFamily="'Cinzel', Georgia, serif"
           color="#ff4444"
-          textShadow="0 0 10px rgba(255,68,68,0.8), 0 2px 4px rgba(0,0,0,0.8)"
+          textShadow="0 2px 4px rgba(0,0,0,0.8)"
           style={{
             animation: "damageFloat 1.5s ease-out forwards",
             animationDelay: "0.8s",
@@ -477,7 +461,6 @@ function PickingPhase({
         fontWeight="700"
         fontFamily="'Cinzel', Georgia, serif"
         color="fg.heading"
-        textShadow="0 0 20px rgba(242,116,5,0.3)"
       >
         Round {currentRound}
       </Text>
@@ -534,9 +517,9 @@ function PickingPhase({
                   : isExhausted
                     ? undefined
                     : !picked
-                      ? { animation: "pickGlow 2s ease-in-out infinite" }
+                      ? undefined
                       : selectedIndex === i
-                        ? { animation: "selectedPop 400ms cubic-bezier(0.34,1.56,0.64,1) both, winnerGlow 1.5s ease-in-out infinite 400ms" }
+                        ? { animation: "selectedPop 400ms cubic-bezier(0.34,1.56,0.64,1) both", border: "3px solid #22aa44" }
                         : { animation: "slideDownFade 400ms ease-out forwards" }
               }
               borderRadius="12px"
@@ -597,7 +580,6 @@ function PickingPhase({
                   style={{ animation: "selectedCheck 500ms cubic-bezier(0.34,1.56,0.64,1) both" }}
                   zIndex={15}
                   border="3px solid rgba(255,255,255,0.3)"
-                  boxShadow="0 0 20px rgba(34,170,68,0.5)"
                 >
                   <Text fontSize="md" lineHeight="1">
                     {"\u2714"}
@@ -677,7 +659,6 @@ function RevealPhase({
         fontWeight="700"
         fontFamily="'Cinzel', Georgia, serif"
         color="fg.heading"
-        textShadow="0 0 20px rgba(242,116,5,0.3)"
       >
         Battle!
       </Text>
@@ -697,11 +678,6 @@ function RevealPhase({
           fontWeight="700"
           fontFamily="'Cinzel', Georgia, serif"
           color={myAdv === "strong" ? "#22cc44" : "#cc4444"}
-          textShadow={
-            myAdv === "strong"
-              ? "0 0 15px rgba(34,204,68,0.5)"
-              : "0 0 15px rgba(204,68,68,0.5)"
-          }
           style={{
             animation: "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
             animationDelay: "1.5s",
@@ -742,7 +718,6 @@ function ResolutionPhase({
         fontWeight="700"
         fontFamily="'Cinzel', Georgia, serif"
         color="fg.heading"
-        textShadow="0 0 20px rgba(242,116,5,0.3)"
       >
         Clash!
       </Text>
@@ -889,11 +864,6 @@ function MatchEndPhase({
 
   const resultLabel = draw ? "DRAW" : iWin ? "VICTORY" : "DEFEAT"
   const resultColor = draw ? "#F27405" : iWin ? "#ffd700" : "#e05252"
-  const resultAnimation = draw
-    ? "victoryPulse 2s ease-in-out infinite"
-    : iWin
-      ? "victoryPulse 2s ease-in-out infinite"
-      : "defeatPulse 2s ease-in-out infinite"
 
   const MINI_CARD_W = 80
   const MINI_CARD_H = 114
@@ -908,7 +878,7 @@ function MatchEndPhase({
         color={resultColor}
         letterSpacing="0.08em"
         style={{
-          animation: `victoryText 800ms cubic-bezier(0.34,1.56,0.64,1) both, ${resultAnimation}`,
+          animation: "victoryText 800ms cubic-bezier(0.34,1.56,0.64,1) both",
         }}
         lineHeight="1"
       >

@@ -68,7 +68,6 @@ export default function CreateRoom({
     }
   }, [shareableUrl])
 
-  // Évite setState après démontage si le timeout « copié » est encore actif
   useEffect(() => () => {
     if (copyFeedbackTimeoutRef.current !== null) {
       clearTimeout(copyFeedbackTimeoutRef.current)
@@ -89,9 +88,7 @@ export default function CreateRoom({
       setRoomCode(code)
       snapLog("ROOM_JOINED", { roomCode: code })
     } catch (err) {
-      const msg = err instanceof Error
-        ? (err.message || "Connection failed — check your network and try again")
-        : (err != null ? String(err) : "Connection failed — check your network and try again")
+      const msg = err instanceof Error ? err.message : "Connection failed — check your network and try again"
       setError(msg)
       snapLog("ROOM_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus })
     }
@@ -151,15 +148,6 @@ export default function CreateRoom({
   // Room created — show lobby
   return (
     <VStack gap="6" p="5" align="center" w="full" maxW="400px">
-      {/* Connection status */}
-      {/* <Badge
-        colorPalette={STATUS_COLOR[peerStatus] ?? "gray"}
-        size="lg"
-        textTransform="capitalize"
-      >
-        {peerStatus}
-      </Badge> */}
-
       {/* Room code */}
       <VStack gap="1">
         <Text fontSize="sm" color="fg.muted" textTransform="uppercase" letterSpacing="0.1em">
@@ -198,7 +186,6 @@ export default function CreateRoom({
         </Box>
       )}
 
-      {/* Lien invité : copie au tap, icône comme repère visuel */}
       {shareableUrl && (
         <Box
           role="button"

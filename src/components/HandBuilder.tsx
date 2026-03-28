@@ -9,9 +9,11 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react"
+import NiceModal from "@ebay/nice-modal-react"
 import { X, Plus, Camera, BookOpen } from "lucide-react"
 import CameraCapture from "./CameraCapture"
 import CardBattle from "./Card"
+import CardPreviewModal from "./CardPreviewModal"
 import { ErrorTap } from "./ErrorModal"
 import type { Card } from "../../shared/types"
 import { HAND_SIZE } from "../../shared/constants"
@@ -126,12 +128,6 @@ export default function HandBuilder({
     )
   }
 
-  // Show latest card preview (just generated, waiting to be acknowledged)
-  if (latestCard && !handFull && subView === "default" && hand.length > 0 && hand[hand.length - 1]?.id === latestCard.id) {
-    // Card was just generated and auto-added — show it briefly then return to default
-    // Actually, we just show the default view which includes the card in the hand slots
-  }
-
   // Camera sub-view
   if (subView === "camera") {
     return (
@@ -182,7 +178,12 @@ export default function HandBuilder({
                 cursor="pointer"
                 transition="transform 0.2s"
                 _hover={{ transform: "translateY(-4px)" }}
-                onClick={() => handlePickFromCollection(card)}
+                onClick={() =>
+                  NiceModal.show(CardPreviewModal, {
+                    card,
+                    onAddToHand: () => handlePickFromCollection(card),
+                  })
+                }
                 borderRadius="12px"
                 overflow="visible"
               >
@@ -221,7 +222,18 @@ export default function HandBuilder({
           if (card) {
             return (
               <Box key={card.id} position="relative">
-                <Box borderRadius="12px" overflow="visible">
+                <Box
+                  borderRadius="12px"
+                  overflow="visible"
+                  cursor="pointer"
+                  onClick={() =>
+                    NiceModal.show(CardPreviewModal, {
+                      card,
+                      aiImageUrl: latestCard?.id === card.id ? aiImageUrl : undefined,
+                      aiGenerating: latestCard?.id === card.id ? aiGenerating : false,
+                    })
+                  }
+                >
                   <CardBattle
                     card={card}
                     width={SLOT_W}
@@ -244,7 +256,10 @@ export default function HandBuilder({
                     alignItems="center"
                     justifyContent="center"
                     cursor="pointer"
-                    onClick={() => onRemoveFromHand(i)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemoveFromHand(i)
+                    }}
                     zIndex={10}
                     border="2px solid rgba(255,255,255,0.2)"
                     _hover={{ bg: "rgba(224,82,82,1)" }}

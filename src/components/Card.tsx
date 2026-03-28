@@ -16,31 +16,26 @@ import type { Card, Element } from "../../shared/types"
 /* ── Element theming ────────────────────────────────────────────── */
 
 interface ElementTheme {
-  gradient: string
+  bg: string
   border: string
-  glow: string
 }
 
 const ELEMENT_THEMES: Record<Element, ElementTheme> = {
   fire: {
-    gradient: "linear-gradient(145deg, #1a0800 0%, #2d0e00 40%, #3d1500 100%)",
+    bg: "#2d0e00",
     border: "#ff6b00",
-    glow: "rgba(255, 107, 0, 0.45)",
   },
   water: {
-    gradient: "linear-gradient(145deg, #000d1a 0%, #001a33 40%, #00264d 100%)",
+    bg: "#001a33",
     border: "#0088ff",
-    glow: "rgba(0, 136, 255, 0.45)",
   },
   nature: {
-    gradient: "linear-gradient(145deg, #001a00 0%, #002e0a 40%, #003d12 100%)",
+    bg: "#002e0a",
     border: "#00cc44",
-    glow: "rgba(0, 204, 68, 0.45)",
   },
   neutral: {
-    gradient: "linear-gradient(145deg, #0d0019 0%, #1a0033 40%, #26004d 100%)",
+    bg: "#1a0033",
     border: "#9933ff",
-    glow: "rgba(153, 51, 255, 0.45)",
   },
 }
 
@@ -105,9 +100,9 @@ const KEYFRAMES_CSS = `
   0%   { opacity: 1; }
   100% { opacity: 0; }
 }
-@keyframes cardSummonGlow {
-  0%   { box-shadow: 0 0 20px 8px var(--glow-color), 0 0 40px 15px var(--glow-color); }
-  100% { box-shadow: 0 0 8px 2px var(--glow-color), 0 0 16px 4px var(--glow-color); }
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
 }
 @keyframes aiImageFadeIn {
   0%   { opacity: 0; filter: brightness(1.8); transform: scale(1.04); }
@@ -147,7 +142,6 @@ function StatCircle({
         justifyContent="center"
         flexShrink={0}
         border="2px solid rgba(255,255,255,0.15)"
-        boxShadow={`0 0 6px ${color}`}
         cursor="default"
       >
         <Text fontSize={font} fontWeight="800" color="white" lineHeight="1">
@@ -210,12 +204,11 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
         flexShrink={0}
         style={
           {
-            "--glow-color": theme.glow,
-            background: theme.gradient,
+            background: theme.bg,
             ...(animate
               ? {
                   animation:
-                    "cardSummonScale 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both, cardSummonGlow 800ms ease-out both",
+                    "cardSummonScale 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
                 }
               : {}),
           } as React.CSSProperties
@@ -365,8 +358,7 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating, width, heig
                     borderRadius="full"
                     bg={theme.border}
                     style={{
-                      animation: "cardSummonGlow 1.5s ease-in-out infinite",
-                      boxShadow: `0 0 6px ${theme.glow}`,
+                      animation: "dotPulse 1.5s ease-in-out infinite",
                     }}
                   />
                   <Text

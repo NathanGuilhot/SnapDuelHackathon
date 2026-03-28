@@ -43,7 +43,6 @@ function extractRoomCode(): string | null {
 }
 
 function App() {
-  // Screen & role management
   const [joinCode, setJoinCode] = useState<string | null>(() => extractRoomCode())
   const [isHost, setIsHost] = useState(() => !extractRoomCode())
   const [screen, setScreen] = useState<Screen>(() =>
@@ -51,7 +50,6 @@ function App() {
   )
   const [isSolo, setIsSolo] = useState(false)
 
-  // Card generation state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [geminiBlob, setGeminiBlob] = useState<Blob | null>(null)
   const [cardBlob, setCardBlob] = useState<Blob | null>(null)
@@ -59,7 +57,6 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Hand & battle state
   const [hand, setHand] = useState<Card[]>(() => loadHand())
   const [collection, setCollection] = useState<Card[]>(() => loadCollection())
   const [handReady, setHandReady] = useState(false)
@@ -72,22 +69,18 @@ function App() {
   const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
 
-  // Live interactivity state
   const [incomingReaction, setIncomingReaction] = useState<{ reactionId: ReactionId; ts: number } | null>(null)
   const [reactionCooldown, setReactionCooldown] = useState(false)
   const [opponentHoveredIndex, setOpponentHoveredIndex] = useState<number | null>(null)
   const [opponentShuffled, setOpponentShuffled] = useState(0)
   const hoverStaleRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  // AI illustration polling
   const { aiImageUrl, aiImageState } = useAiImage(card?.id ?? null)
 
-  // Track if opponent was ever connected (to detect disconnect vs never-connected)
   const hadOpponent = useRef(false)
   const { leaveRoom } = useConnection()
   const { remotePeers } = usePeers<PeerMetadata>()
 
-  // Game protocol — data channel messaging
   const gameChannel = useGameChannel({
     isHost,
     handlers: {

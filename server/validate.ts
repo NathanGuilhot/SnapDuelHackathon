@@ -13,11 +13,6 @@ import {
 import type { Card, Element } from "../shared/types.js";
 import { snapLog } from "../shared/debug.js";
 
-// ---------------------------------------------------------------------------
-// Zod schemas
-// ---------------------------------------------------------------------------
-
-/** Plain schema — used to generate JSON Schema for Gemini's responseJsonSchema */
 const geminiJsonSchema = z.object({
   name: z.string(),
   element: z.enum(ELEMENTS),
@@ -28,10 +23,8 @@ const geminiJsonSchema = z.object({
   illustration_prompt: z.string(),
 });
 
-/** JSON Schema sent to Gemini so it returns structured output */
 export const cardJsonSchema = toJSONSchema(geminiJsonSchema);
 
-/** Parsing schema with .catch() defaults — never throws */
 const geminiCardSchema = z.object({
   name: z.string().catch("Mysterious Entity"),
   element: z.enum(ELEMENTS).catch("neutral"),
@@ -42,10 +35,6 @@ const geminiCardSchema = z.object({
   illustration_prompt: z.string().catch(""),
 });
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, "");
 }
@@ -53,10 +42,6 @@ function stripHtml(s: string): string {
 function clamp(val: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(val)));
 }
-
-// ---------------------------------------------------------------------------
-// validateCard
-// ---------------------------------------------------------------------------
 
 export function validateCard(
   raw: unknown,
@@ -117,10 +102,6 @@ export function validateCard(
     imageUrl,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Glitch Card fallback
-// ---------------------------------------------------------------------------
 
 const GLITCH_NAMES = [
   "Data Phantom (???)",

@@ -11,10 +11,7 @@ const SHUFFLE_KEYFRAMES = `
   60%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.88); opacity: 0.7; }
   100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
 }
-@keyframes selectedGlow {
-  0%, 100% { box-shadow: 0 0 8px 2px rgba(34,170,68,0.3); }
-  50%      { box-shadow: 0 0 16px 6px rgba(34,170,68,0.6); }
-}
+
 `
 
 interface OpponentCardBacksProps {
@@ -118,8 +115,6 @@ export default function OpponentCardBacks({
             color="rgba(34,170,68,0.9)"
             textAlign="center"
             mt="1"
-            textShadow="0 0 8px rgba(34,170,68,0.4)"
-            style={{ animation: "selectedGlow 1.5s ease-in-out infinite" }}
           >
             Locked in
           </Text>

@@ -1,6 +1,8 @@
+import NiceModal from "@ebay/nice-modal-react"
 import { Box, Button, SimpleGrid, Text, VStack } from "@chakra-ui/react"
 import { ArrowLeft } from "lucide-react"
 import CardBattle from "./Card"
+import CardPreviewModal from "./CardPreviewModal"
 import type { Card } from "../../shared/types"
 
 interface MyCardsProps {
@@ -49,6 +51,8 @@ export default function MyCards({ cards, onBack }: MyCardsProps) {
               h="220px"
               position="relative"
               overflow="visible"
+              cursor="pointer"
+              onClick={() => NiceModal.show(CardPreviewModal, { card })}
             >
               <CardBattle card={card} width={154} height={220} />
             </Box>

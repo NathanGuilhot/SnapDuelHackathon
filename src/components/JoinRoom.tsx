@@ -74,9 +74,7 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
         setJoined(true)
         snapLog("JOIN_SUCCESS", { roomCode: code })
       } catch (err) {
-        const msg = err instanceof Error
-          ? (err.message || "Connection failed — check your network and try again")
-          : (err != null ? String(err) : "Connection failed — check your network and try again")
+        const msg = err instanceof Error ? err.message : "Connection failed — check your network and try again"
         setError(msg)
         snapLog("JOIN_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus: peerStatusRef.current })
       } finally {
@@ -137,14 +135,6 @@ export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }
             {initialCode}
           </Heading>
         </VStack>
-
-        {/* <Badge
-          colorPalette={STATUS_COLOR[peerStatus] ?? "gray"}
-          size="lg"
-          textTransform="capitalize"
-        >
-          {peerStatus}
-        </Badge> */}
 
         {error ? (
           <VStack gap="3" w="full" maxW="320px">
