@@ -1,5 +1,5 @@
 import type { RoundResult, MatchState } from "./types.js";
-import { WINS_NEEDED, MAX_ROUNDS } from "./constants.js";
+import { WINS_NEEDED, MAX_ROUNDS, MAX_CARD_USES } from "./constants.js";
 
 export function createMatchState(): MatchState {
   return {
@@ -49,6 +49,6 @@ export function getAvailableIndices(
   usedIndices: number[],
 ): number[] {
   return Array.from({ length: handSize }, (_, i) => i).filter(
-    (i) => !usedIndices.includes(i),
+    (i) => usedIndices.filter((u) => u === i).length < MAX_CARD_USES,
   );
 }

@@ -5,6 +5,7 @@ import ReactionBar from "./ReactionBar"
 import ReactionToast from "./ReactionToast"
 import OpponentCardBacks from "./OpponentCardBacks"
 import type { Card, ReactionId, RoundResult, ElementAdvantage } from "../../shared/types"
+import { MAX_CARD_USES } from "../../shared/constants"
 
 /* ── Props ─────────────────────────────────────────────────────── */
 
@@ -465,7 +466,10 @@ function PickingPhase({
   isSolo: boolean
 }) {
   const picked = selectedIndex !== null
-  const usedSet = new Set(usedIndices)
+  const useCounts = new Map<number, number>()
+  for (const idx of usedIndices) {
+    useCounts.set(idx, (useCounts.get(idx) ?? 0) + 1)
+  }
 
   // Throttle hover events
   const lastHoverTs = useRef(0)
@@ -515,13 +519,15 @@ function PickingPhase({
 
       <SimpleGrid columns={{ base: 2, md: 3 }} gap="3" justifyItems="center" w="full">
         {(() => {
-          const activeCards = myCards.map((_, idx) => idx).filter(idx => !usedSet.has(idx))
+          const activeCards = myCards.map((_, idx) => idx).filter(idx => (useCounts.get(idx) ?? 0) < MAX_CARD_USES)
           const centerPos = (activeCards.length - 1) / 2
           const CARD_STRIDE = PICK_CARD_W + 12 // card width + gap
 
           return myCards.map((card, i) => {
-          const isUsed = usedSet.has(i)
-          const isPickable = !picked && !isUsed
+          const useCount = useCounts.get(i) ?? 0
+          const isExhausted = useCount >= MAX_CARD_USES
+          const isPartiallyUsed = useCount > 0 && !isExhausted
+          const isPickable = !picked && !isExhausted
           const activePos = activeCards.indexOf(i)
           const gatherX = activePos >= 0 ? -((activePos - centerPos) * CARD_STRIDE) : 0
           const gatherRot = activePos >= 0 ? (activePos - centerPos) * 8 : 0
@@ -536,18 +542,18 @@ function PickingPhase({
               onClick={() => isPickable && onPickCard(i)}
               onPointerEnter={() => isPickable && !isSolo && handleHover(i)}
               onPointerLeave={() => !isSolo && handleHover(null)}
-              opacity={isUsed ? 0.25 : 1}
-              transition={!picked && !isUsed ? "transform 0.2s" : undefined}
+              opacity={isExhausted ? 0.25 : isPartiallyUsed ? 0.65 : 1}
+              transition={!picked && !isExhausted ? "transform 0.2s" : undefined}
               _hover={isPickable ? { transform: "translateY(-4px)" } : undefined}
               style={
-                isShuffling && !isUsed
+                isShuffling && !isExhausted
                   ? {
                       "--gather-x": `${gatherX}px`,
                       "--gather-y": "0px",
                       "--gather-rot": `${gatherRot}deg`,
                       animation: "shuffleGather 700ms cubic-bezier(0.34,1.56,0.64,1) both",
                     } as React.CSSProperties
-                  : isUsed
+                  : isExhausted
                     ? undefined
                     : !picked
                       ? { animation: "pickGlow 2s ease-in-out infinite" }
@@ -557,12 +563,12 @@ function PickingPhase({
               }
               borderRadius="12px"
               overflow="visible"
-              pointerEvents={isUsed || (picked && selectedIndex !== i) ? "none" : "auto"}
+              pointerEvents={isExhausted || (picked && selectedIndex !== i) ? "none" : "auto"}
             >
               <CardBattle card={card} width={PICK_CARD_W} height={PICK_CARD_H} />
 
-              {/* USED badge */}
-              {isUsed && (
+              {/* Usage badge */}
+              {isExhausted && (
                 <Box
                   position="absolute"
                   top="50%"
@@ -576,6 +582,22 @@ function PickingPhase({
                 >
                   <Text fontSize="xs" fontWeight="700" color="fg.muted" letterSpacing="0.1em">
                     USED
+                  </Text>
+                </Box>
+              )}
+              {isPartiallyUsed && (
+                <Box
+                  position="absolute"
+                  top="6px"
+                  right="6px"
+                  bg="rgba(0,0,0,0.55)"
+                  borderRadius="full"
+                  px="2"
+                  py="0.5"
+                  zIndex={15}
+                >
+                  <Text fontSize="2xs" fontWeight="700" color="orange.300" letterSpacing="0.05em">
+                    1/{MAX_CARD_USES}
                   </Text>
                 </Box>
               )}

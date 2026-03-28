@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Box, HStack, Text } from "@chakra-ui/react"
 import CardBack from "./CardBack"
+import { MAX_CARD_USES } from "../../shared/constants"
 
 const SHUFFLE_KEYFRAMES = `
 @keyframes shuffleGather {
@@ -34,9 +35,12 @@ export default function OpponentCardBacks({
   opponentPicked,
   shuffleCounter,
 }: OpponentCardBacksProps) {
-  const usedSet = new Set(usedIndices)
+  const useCounts = new Map<number, number>()
+  for (const idx of usedIndices) {
+    useCounts.set(idx, (useCounts.get(idx) ?? 0) + 1)
+  }
   const activeIndices = Array.from({ length: cardCount }, (_, i) => i).filter(
-    (i) => !usedSet.has(i),
+    (i) => (useCounts.get(i) ?? 0) < MAX_CARD_USES,
   )
 
   const [isShuffling, setIsShuffling] = useState(false)

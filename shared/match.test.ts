@@ -211,16 +211,24 @@ describe("getAvailableIndices", () => {
     expect(getAvailableIndices(3, [])).toEqual([0, 1, 2]);
   });
 
-  it("filters out used index", () => {
-    expect(getAvailableIndices(3, [1])).toEqual([0, 2]);
+  it("still available after one use (MAX_CARD_USES = 2)", () => {
+    expect(getAvailableIndices(3, [1])).toEqual([0, 1, 2]);
   });
 
-  it("filters out multiple used indices", () => {
-    expect(getAvailableIndices(3, [0, 2])).toEqual([1]);
+  it("all still available when each used once", () => {
+    expect(getAvailableIndices(3, [0, 1, 2])).toEqual([0, 1, 2]);
   });
 
-  it("returns empty when all used", () => {
-    expect(getAvailableIndices(3, [0, 1, 2])).toEqual([]);
+  it("filters out index used twice", () => {
+    expect(getAvailableIndices(3, [1, 1])).toEqual([0, 2]);
+  });
+
+  it("filters out multiple indices used twice", () => {
+    expect(getAvailableIndices(3, [0, 0, 2, 2])).toEqual([1]);
+  });
+
+  it("returns empty when all used twice", () => {
+    expect(getAvailableIndices(3, [0, 0, 1, 1, 2, 2])).toEqual([]);
   });
 });
 
@@ -238,8 +246,8 @@ describe("full match simulation", () => {
     expect(s.scoreB).toBe(0);
     expect(s.currentRound).toBe(2);
     expect(isMatchOver(s)).toBe(false);
-    expect(getAvailableIndices(3, s.usedIndicesA)).toEqual([1, 2]);
-    expect(getAvailableIndices(3, s.usedIndicesB)).toEqual([0, 1]);
+    expect(getAvailableIndices(3, s.usedIndicesA)).toEqual([0, 1, 2]);
+    expect(getAvailableIndices(3, s.usedIndicesB)).toEqual([0, 1, 2]);
 
     // Round 2: B wins
     s = applyRoundResult(s, makeRoundResult("B", 2), 1, 0);
@@ -247,8 +255,8 @@ describe("full match simulation", () => {
     expect(s.scoreB).toBe(1);
     expect(s.currentRound).toBe(3);
     expect(isMatchOver(s)).toBe(false);
-    expect(getAvailableIndices(3, s.usedIndicesA)).toEqual([2]);
-    expect(getAvailableIndices(3, s.usedIndicesB)).toEqual([1]);
+    expect(getAvailableIndices(3, s.usedIndicesA)).toEqual([0, 1, 2]);
+    expect(getAvailableIndices(3, s.usedIndicesB)).toEqual([0, 1, 2]);
 
     // Round 3: A wins
     s = applyRoundResult(s, makeRoundResult("A", 3), 2, 1);

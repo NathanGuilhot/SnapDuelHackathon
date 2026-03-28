@@ -24,7 +24,7 @@ import { useAiImage } from "./hooks/useAiImage"
 import { resolveBattle } from "../shared/battle.ts"
 import { createMatchState, applyRoundResult, isMatchOver, getMatchWinner, getAvailableIndices } from "../shared/match.ts"
 import type { Card, GameMessage, MatchState, PeerMetadata, PresenceMessage, ReactionId, RoundResult } from "../shared/types.ts"
-import { HAND_SIZE } from "../shared/constants.ts"
+import { HAND_SIZE, MAX_CARD_USES } from "../shared/constants.ts"
 
 type Screen =
   | "lobby"
@@ -445,8 +445,12 @@ function App() {
 
   function handleShuffle() {
     if (selectedIndex !== null) return
-    const usedSet = new Set(matchState?.usedIndicesA ?? [])
-    const available = hand.map((_, i) => i).filter((i) => !usedSet.has(i))
+    const usedIndices = matchState?.usedIndicesA ?? []
+    const shuffleUseCounts = new Map<number, number>()
+    for (const idx of usedIndices) {
+      shuffleUseCounts.set(idx, (shuffleUseCounts.get(idx) ?? 0) + 1)
+    }
+    const available = hand.map((_, i) => i).filter((i) => (shuffleUseCounts.get(i) ?? 0) < MAX_CARD_USES)
     if (available.length <= 1) return
 
     // Fisher-Yates on available indices
