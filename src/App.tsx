@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Heading,
+  Image,
   Text,
   VStack,
   HStack,
@@ -552,18 +553,13 @@ function App() {
       {/* Header — hide during battle for more space */}
       {!isBattleScreen && (
         <VStack gap="1" my={{ base: "6", lg: "10" }}>
-          <Heading
-            as="h1"
-            fontSize={{ base: "5xl", lg: "7xl" }}
-            fontWeight="800"
-            fontFamily="heading"
-            letterSpacing="-0.02em"
-            color="fg.heading"
-            textShadow="0 0 40px rgba(242, 116, 5, 0.3)"
-            lineHeight="1"
-          >
-            SnapDuel
-          </Heading>
+          <Image
+            src="/src/assets/snapduellogo.png"
+            alt="SnapDuel"
+            maxW="320px"
+            w="100%"
+            h="auto"
+          />
           <Text
             fontSize={{ base: "sm", lg: "md" }}
             color="fg.muted"
