@@ -10,6 +10,7 @@ import {
   GEMINI_MODEL,
   GEMINI_CARD_CONFIG,
 } from "./prompts.js";
+import { triggerNanoBanana } from "./nano-banana.js";
 
 export function registerGenerateCard(
   app: FastifyInstance,
@@ -138,7 +139,12 @@ export function registerGenerateCard(
       card = generateGlitchCard(cardId, imageUrl);
     }
 
-    // 6. Return card
+    // 6. Kick off AI illustration in background
+    if (card.illustration_prompt) {
+      triggerNanoBanana(card.id, card.illustration_prompt);
+    }
+
+    // 7. Return card
     return reply.send(card);
   });
 }

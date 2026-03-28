@@ -11,6 +11,7 @@ import {
   VStack,
 } from "@chakra-ui/react"
 import { useConnection, usePeers, useSandbox } from "@fishjam-cloud/react-client"
+import { ErrorTap } from "./ErrorModal"
 import { snapLog } from "../../shared/debug"
 import type { PeerMetadata } from "../../shared/types"
 
@@ -131,9 +132,7 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
 
         {error ? (
           <>
-            <Text color="fg.error" fontWeight="500" fontSize="md">
-              {error}
-            </Text>
+            <ErrorTap message={error} />
             <Button
               size="lg"
               colorPalette="orange"
@@ -248,9 +247,7 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
 
       {error && (
         <>
-          <Text color="fg.error" fontWeight="500" fontSize="md">
-            {error}
-          </Text>
+          <ErrorTap message={error} />
           <Button
             size="lg"
             variant="outline"

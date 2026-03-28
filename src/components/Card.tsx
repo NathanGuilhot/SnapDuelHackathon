@@ -109,6 +109,14 @@ const KEYFRAMES_CSS = `
   0%   { box-shadow: 0 0 40px 15px var(--glow-color), 0 0 80px 30px var(--glow-color); }
   100% { box-shadow: 0 0 12px 2px var(--glow-color), 0 0 25px 5px var(--glow-color); }
 }
+@keyframes aiImageFadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes aiShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 `
 
 /* ── StatCircle ─────────────────────────────────────────────────── */
@@ -149,9 +157,11 @@ function StatCircle({
 
 interface CardBattleProps {
   card: Card
+  aiImageUrl?: string | null
+  aiGenerating?: boolean
 }
 
-export default function CardBattle({ card }: CardBattleProps) {
+export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattleProps) {
   const theme = ELEMENT_THEMES[card.element]
   const elementSrc = ELEMENT_IMAGE[card.element]
 
@@ -202,7 +212,7 @@ export default function CardBattle({ card }: CardBattleProps) {
           {/* Header: name + element emoji */}
           <HStack
             justify="space-between"
-            align="center"
+            align="flex-start"
             px="10px"
             pt="8px"
             pb="4px"
@@ -215,11 +225,10 @@ export default function CardBattle({ card }: CardBattleProps) {
               color="#e8f0ed"
               lineHeight="1.2"
               textShadow="0 1px 4px rgba(0,0,0,0.6)"
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
               flex="1"
+              minW={0}
               textAlign="left"
+              overflowWrap="break-word"
             >
               {card.name}
             </Text>
@@ -251,6 +260,7 @@ export default function CardBattle({ card }: CardBattleProps) {
             bg="#000"
             position="relative"
           >
+            {/* Photo layer (always present) */}
             <img
               src={card.imageUrl}
               alt={card.name}
@@ -259,8 +269,83 @@ export default function CardBattle({ card }: CardBattleProps) {
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
+                position: "absolute",
+                inset: 0,
               }}
             />
+            {/* AI illustration layer (fades in over the photo) */}
+            {aiImageUrl && (
+              <img
+                src={aiImageUrl}
+                alt={`${card.name} illustration`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  position: "absolute",
+                  inset: 0,
+                  animation: "aiImageFadeIn 600ms ease-out forwards",
+                }}
+              />
+            )}
+            {/* Generating indicator — shimmer + label */}
+            {aiGenerating && !aiImageUrl && (
+              <>
+                <Box
+                  position="absolute"
+                  inset="0"
+                  overflow="hidden"
+                  pointerEvents="none"
+                  zIndex={2}
+                >
+                  <Box
+                    position="absolute"
+                    inset="0"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
+                      animation: "aiShimmer 1.8s ease-in-out infinite",
+                    }}
+                  />
+                </Box>
+                <Box
+                  position="absolute"
+                  bottom="6px"
+                  left="50%"
+                  transform="translateX(-50%)"
+                  bg="rgba(0,0,0,0.7)"
+                  backdropFilter="blur(4px)"
+                  borderRadius="full"
+                  px="10px"
+                  py="3px"
+                  display="flex"
+                  alignItems="center"
+                  gap="6px"
+                  zIndex={3}
+                >
+                  <Box
+                    w="6px"
+                    h="6px"
+                    borderRadius="full"
+                    bg={theme.border}
+                    style={{
+                      animation: "cardSummonGlow 1.5s ease-in-out infinite",
+                      boxShadow: `0 0 6px ${theme.glow}`,
+                    }}
+                  />
+                  <Text
+                    fontSize="9px"
+                    fontWeight="600"
+                    color="#ccc"
+                    whiteSpace="nowrap"
+                    letterSpacing="0.03em"
+                  >
+                    AI painting...
+                  </Text>
+                </Box>
+              </>
+            )}
           </Box>
 
           {/* Stats row */}

@@ -13,6 +13,7 @@ import {
 import { Check, Copy } from "lucide-react"
 import { useConnection, usePeers, useSandbox } from "@fishjam-cloud/react-client"
 import NiceModal from "@ebay/nice-modal-react"
+import { ErrorTap } from "./ErrorModal"
 import QRCode from "qrcode"
 import { snapLog } from "../../shared/debug"
 import { JoinModal } from "./JoinModal"
@@ -139,11 +140,7 @@ export default function CreateRoom({
           </Text>
         </HStack>
 
-        {error && (
-          <Text color="fg.error" fontWeight="500" fontSize="md">
-            {error}
-          </Text>
-        )}
+        {error && <ErrorTap message={error} />}
       </VStack>
     )
   }

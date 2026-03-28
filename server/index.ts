@@ -7,6 +7,7 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyCors from "@fastify/cors";
 import { snapLog } from "../shared/debug.js";
 import { registerGenerateCard } from "./generate-card.js";
+import { registerNanoBanana } from "./nano-banana.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -76,6 +77,11 @@ app.get("/health", async () => {
 });
 
 registerGenerateCard(app, {
+  geminiApiKey: GEMINI_API_KEY,
+  uploadsDir: UPLOADS_DIR,
+});
+
+registerNanoBanana(app, {
   geminiApiKey: GEMINI_API_KEY,
   uploadsDir: UPLOADS_DIR,
 });

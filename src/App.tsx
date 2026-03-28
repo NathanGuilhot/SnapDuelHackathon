@@ -14,12 +14,14 @@ import CameraCapture from "./components/CameraCapture"
 import CardBattle from "./components/Card"
 import BattleArena from "./components/BattleArena"
 import CreateRoom from "./components/CreateRoom"
+import { ErrorTap } from "./components/ErrorModal"
 import JoinRoom from "./components/JoinRoom"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { saveHand, loadHand, clearHand } from "./lib/handStorage"
 import { generateSoloOpponent } from "./lib/soloOpponent"
 import { snapLog } from "../shared/debug.ts"
 import { useGameChannel } from "./hooks/useGameChannel"
+import { useAiImage } from "./hooks/useAiImage"
 import { resolveBattle } from "../shared/battle.ts"
 import type { Card, GameMessage, PeerMetadata, RoundResult } from "../shared/types.ts"
 
@@ -64,6 +66,9 @@ function App() {
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
   const [matchWinner, setMatchWinner] = useState<"A" | "B" | "draw" | null>(null)
   const [disconnected, setDisconnected] = useState(false)
+
+  // AI illustration polling
+  const { aiImageUrl, aiImageState } = useAiImage(card?.id ?? null)
 
   // Track if opponent was ever connected (to detect disconnect vs never-connected)
   const hadOpponent = useRef(false)
@@ -131,6 +136,19 @@ function App() {
       snapLog("OPPONENT_DISCONNECTED")
     }
   }, [remotePeers.length, screen, isSolo])
+
+  // Swap card image when AI illustration arrives
+  useEffect(() => {
+    if (!card || !aiImageUrl) return
+    setCard((prev) => prev ? { ...prev, imageUrl: aiImageUrl } : prev)
+    setHand((prev) => {
+      const updated = prev.map((c) =>
+        c.id === card.id ? { ...c, imageUrl: aiImageUrl } : c,
+      )
+      saveHand(updated)
+      return updated
+    })
+  }, [aiImageUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Host: advance to PICKING when both hands ready
   useEffect(() => {
@@ -482,7 +500,7 @@ function App() {
             <VStack gap="4" p="5" align="center" w="full" maxW="400px">
               {card ? (
                 <>
-                  <CardBattle card={card} />
+                  <CardBattle card={card} aiImageUrl={aiImageUrl} aiGenerating={aiImageState === "generating"} />
 
                   {/* Ready to Battle button */}
                   {!handReady ? (
@@ -542,9 +560,7 @@ function App() {
                     aspectRatio="1/1"
                     shadow="0 0 20px rgba(242, 116, 5, 0.1)"
                   />
-                  <Text color="fg.error" fontWeight="500" fontSize="md">
-                    {error}
-                  </Text>
+                  <ErrorTap message={error} />
                   <Button
                     size="lg"
                     colorPalette="orange"
