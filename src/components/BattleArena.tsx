@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
-import { Box, Button, HStack, SimpleGrid, Spinner, Text, VStack } from "@chakra-ui/react"
+import { Box, Button, HStack, Image, SimpleGrid, Spinner, Text, VStack } from "@chakra-ui/react"
+import cardBackSrc from "../assets/cardback.png"
 import CardBattle from "./Card"
 import ReactionBar from "./ReactionBar"
 import ReactionToast from "./ReactionToast"
@@ -110,11 +111,12 @@ const BATTLE_KEYFRAMES = `
   40%  { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
-@keyframes shuffleGather {
+@keyframes shuffleGatherIn {
   0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
-  40%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.88); opacity: 0.7; }
-  50%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(calc(var(--gather-rot) * -0.6)) scale(0.88); opacity: 0.7; }
-  60%  { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.88); opacity: 0.7; }
+  100% { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.85); opacity: 0.6; }
+}
+@keyframes shuffleSpreadOut {
+  0%   { transform: translate(var(--gather-x), var(--gather-y)) rotate(var(--gather-rot)) scale(0.85); opacity: 0.6; }
   100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
 }
 `
@@ -318,47 +320,24 @@ function FlipCard({
           <CardBattle card={card} width={cardWidth} height={cardHeight} animate={flipped} />
         </Box>
 
-        {/* Back face — card back design */}
-        <Box
+        {/* Back face — card back image */}
+        <Image
+          src={cardBackSrc}
+          alt="Card back"
           position="absolute"
           inset="0"
+          w="full"
+          h="full"
+          objectFit="cover"
           borderRadius={borderRadius}
-          border="3px solid rgba(184, 134, 11, 0.6)"
-          overflow="hidden"
+          draggable={false}
+          userSelect="none"
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
           } as React.CSSProperties}
-          bg="linear-gradient(145deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%)"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Box
-            w="85%"
-            h="90%"
-            border="1px solid rgba(184, 134, 11, 0.3)"
-            borderRadius={`${Math.max(6, Math.round(10 * ratio))}px`}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            bg="radial-gradient(ellipse, rgba(184,134,11,0.08) 0%, transparent 70%)"
-            boxShadow={`inset 0 0 30px ${glowColor}`}
-          >
-            <Text
-              fontSize={`${Math.max(14, Math.round(28 * ratio))}px`}
-              fontWeight="900"
-              fontFamily="'Cinzel', Georgia, serif"
-              color="rgba(184, 134, 11, 0.5)"
-              letterSpacing="0.1em"
-              textShadow={`0 0 20px ${glowColor}`}
-              userSelect="none"
-            >
-              SD
-            </Text>
-          </Box>
-        </Box>
+        />
       </Box>
     </Box>
   )
@@ -480,15 +459,18 @@ function PickingPhase({
     onHoverCard(index)
   }
 
-  // Shuffle animation state
-  const [isShuffling, setIsShuffling] = useState(false)
+  // Shuffle animation state: null → "gather" → "spread" → null
+  const [shufflePhase, setShufflePhase] = useState<"gather" | "spread" | null>(null)
   const handleShuffle = () => {
-    if (picked || isShuffling) return
-    setIsShuffling(true)
+    if (picked || shufflePhase) return
+    setShufflePhase("gather")
     setTimeout(() => {
-      onShuffle()
-      setIsShuffling(false)
-    }, 700)
+      onShuffle()           // swap data while cards are piled up
+      setShufflePhase("spread")
+      setTimeout(() => {
+        setShufflePhase(null)
+      }, 350)
+    }, 350)
   }
 
   const PICK_CARD_W = 116
@@ -546,12 +528,14 @@ function PickingPhase({
               transition={!picked && !isExhausted ? "transform 0.2s" : undefined}
               _hover={isPickable ? { transform: "translateY(-4px)" } : undefined}
               style={
-                isShuffling && !isExhausted
+                shufflePhase && !isExhausted
                   ? {
                       "--gather-x": `${gatherX}px`,
                       "--gather-y": "0px",
                       "--gather-rot": `${gatherRot}deg`,
-                      animation: "shuffleGather 700ms cubic-bezier(0.34,1.56,0.64,1) both",
+                      animation: shufflePhase === "gather"
+                        ? "shuffleGatherIn 350ms ease-in forwards"
+                        : "shuffleSpreadOut 350ms cubic-bezier(0.34,1.56,0.64,1) both",
                     } as React.CSSProperties
                   : isExhausted
                     ? undefined
@@ -633,7 +617,7 @@ function PickingPhase({
       </SimpleGrid>
 
       {/* Shuffle button */}
-      {!picked && !isShuffling && (
+      {!picked && !shufflePhase && (
         <Button
           size="sm"
           variant="outline"
