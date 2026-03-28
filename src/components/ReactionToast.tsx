@@ -32,7 +32,7 @@ type Phase = "hidden" | "entering" | "visible" | "exiting"
 export default function ReactionToast({ reaction }: ReactionToastProps) {
   const [phase, setPhase] = useState<Phase>("hidden")
   const [current, setCurrent] = useState<ReactionId | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     if (!reaction) return

@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import {
   Box,
   Button,
-  Heading,
   Image,
   Text,
   VStack,
@@ -77,7 +76,7 @@ function App() {
   const [reactionCooldown, setReactionCooldown] = useState(false)
   const [opponentHoveredIndex, setOpponentHoveredIndex] = useState<number | null>(null)
   const [opponentShuffled, setOpponentShuffled] = useState(0)
-  const hoverStaleRef = useRef<ReturnType<typeof setTimeout>>()
+  const hoverStaleRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // AI illustration polling
   const { aiImageUrl, aiImageState } = useAiImage(card?.id ?? null)
