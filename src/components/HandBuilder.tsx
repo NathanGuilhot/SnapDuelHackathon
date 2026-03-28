@@ -19,6 +19,7 @@ import CardPreviewModal from "./CardPreviewModal"
 import { ErrorTap } from "./ErrorModal"
 import type { Card } from "../../shared/types"
 import { HAND_SIZE } from "../../shared/constants"
+import { useAiImageEvents } from "../hooks/useAiImageEvents"
 
 function cardPreviewKeyDown(
   e: KeyboardEvent,
@@ -39,8 +40,6 @@ interface HandBuilderProps {
   isGenerating: boolean
   generatingPreviewUrl: string | null
   generatingError: string | null
-  aiImageUrl: string | null
-  aiGenerating: boolean
   handReady: boolean
   opponentReady: boolean
   onCapture: (file: File) => void
@@ -58,8 +57,6 @@ export default function HandBuilder({
   isGenerating,
   generatingPreviewUrl,
   generatingError,
-  aiImageUrl,
-  aiGenerating,
   handReady,
   opponentReady,
   onCapture,
@@ -69,6 +66,7 @@ export default function HandBuilder({
   onReady,
   onReset,
 }: HandBuilderProps) {
+  const { statuses: aiStatuses } = useAiImageEvents()
   const [subView, setSubView] = useState<SubView>("default")
   const slotW = useBreakpointValue({ base: 92, sm: 100, md: 116 }) ?? 92
   const slotH = Math.round((166 / 116) * slotW)
@@ -260,29 +258,31 @@ export default function HandBuilder({
                   overflow="visible"
                   cursor="pointer"
                   aria-label={`View ${card.name}`}
-                  onClick={() =>
+                  onClick={() => {
+                    const st = aiStatuses.get(card.id)
                     NiceModal.show(CardPreviewModal, {
                       card,
-                      aiImageUrl: latestCard?.id === card.id ? aiImageUrl : undefined,
-                      aiGenerating: latestCard?.id === card.id ? aiGenerating : false,
+                      aiImageUrl: st?.status === "ready" ? st.url : undefined,
+                      aiGenerating: st?.status === "pending",
                     })
-                  }
-                  onKeyDown={(e) =>
+                  }}
+                  onKeyDown={(e) => {
+                    const st = aiStatuses.get(card.id)
                     cardPreviewKeyDown(e, () =>
                       NiceModal.show(CardPreviewModal, {
                         card,
-                        aiImageUrl: latestCard?.id === card.id ? aiImageUrl : undefined,
-                        aiGenerating: latestCard?.id === card.id ? aiGenerating : false,
+                        aiImageUrl: st?.status === "ready" ? st.url : undefined,
+                        aiGenerating: st?.status === "pending",
                       }),
                     )
-                  }
+                  }}
                 >
                   <CardBattle
                     card={card}
                     width={slotW}
                     height={slotH}
-                    aiImageUrl={latestCard?.id === card.id ? aiImageUrl : undefined}
-                    aiGenerating={latestCard?.id === card.id ? aiGenerating : false}
+                    aiImageUrl={aiStatuses.get(card.id)?.status === "ready" ? (aiStatuses.get(card.id) as { status: "ready"; url: string }).url : undefined}
+                    aiGenerating={aiStatuses.get(card.id)?.status === "pending"}
                     animate={latestCard?.id === card.id}
                   />
                 </Box>

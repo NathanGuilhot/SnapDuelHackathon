@@ -1,12 +1,14 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
+import type { ServerResponse } from "node:http";
 import { GoogleGenAI } from "@google/genai";
 import { snapLog } from "../shared/debug.js";
 
 const TOTAL_TIMEOUT_MS = 45_000;
 const MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 10_000;
+const SSE_KEEPALIVE_MS = 30_000;
 
 // ── Status store ─────────────────────────────────────────────────
 type AiImageStatus =
@@ -15,8 +17,20 @@ type AiImageStatus =
   | { state: "failed"; reason: string };
 
 const aiImageStore = new Map<string, AiImageStatus>();
-const aiImageResolvers = new Map<string, (status: AiImageStatus) => void>();
-const aiImagePromises = new Map<string, Promise<AiImageStatus>>();
+
+// ── SSE client registry ──────────────────────────────────────────
+const sseClients = new Set<{ raw: ServerResponse; interval: ReturnType<typeof setInterval> }>();
+
+function broadcastSSE(event: string, data: Record<string, unknown>): void {
+  const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.raw.write(frame);
+    } catch {
+      // Client disconnected, cleanup happens via close handler
+    }
+  }
+}
 
 // ── Module-level refs (set during registration) ──────────────────
 let ai: GoogleGenAI;
@@ -48,14 +62,16 @@ const CLEANUP_DELAY_MS = 60 * 60 * 1000; // 1 hour
 
 function settleAiImage(cardId: string, status: AiImageStatus): void {
   aiImageStore.set(cardId, status);
-  const resolve = aiImageResolvers.get(cardId);
-  if (resolve) {
-    resolve(status);
-    aiImageResolvers.delete(cardId);
+
+  // Push to all connected SSE clients
+  if (status.state === "ready") {
+    broadcastSSE("ai-image-ready", { cardId, status: "ready", url: status.url });
+  } else if (status.state === "failed") {
+    broadcastSSE("ai-image-ready", { cardId, status: "failed" });
   }
+
   setTimeout(() => {
     aiImageStore.delete(cardId);
-    aiImagePromises.delete(cardId);
   }, CLEANUP_DELAY_MS);
 }
 
@@ -66,11 +82,6 @@ export function triggerNanoBanana(
   referenceImage?: { base64: string; mimeType: string },
 ): void {
   aiImageStore.set(cardId, { state: "pending" });
-
-  let resolve!: (status: AiImageStatus) => void;
-  const promise = new Promise<AiImageStatus>((r) => { resolve = r; });
-  aiImageResolvers.set(cardId, resolve);
-  aiImagePromises.set(cardId, promise);
 
   (async () => {
     const controller = new AbortController();
@@ -162,31 +173,54 @@ export function registerNanoBanana(
   ai = new GoogleGenAI({ apiKey: opts.geminiApiKey });
   uploadsDir = opts.uploadsDir;
 
+  // Lightweight non-blocking status check (for reconnection / missed SSE events)
   app.get<{ Params: { id: string } }>(
     "/api/card/:id/ai-image",
     async (request, reply) => {
       const { id } = request.params;
       const status = aiImageStore.get(id);
 
-      // Already resolved — return immediately
       if (status?.state === "ready") {
         return reply.send({ status: "ready", url: status.url });
       }
       if (status?.state === "failed") {
         return reply.send({ status: "failed" });
       }
-
-      // Pending — wait for the generation to finish
-      const promise = aiImagePromises.get(id);
-      if (!promise) {
-        return reply.send({ status: "unknown" });
+      if (status?.state === "pending") {
+        return reply.send({ status: "pending" });
       }
-
-      const result = await promise;
-      if (result.state === "ready") {
-        return reply.send({ status: "ready", url: result.url });
-      }
-      return reply.send({ status: "failed" });
+      return reply.send({ status: "unknown" });
     },
   );
+
+  // SSE endpoint — single persistent connection per client tab
+  app.get("/api/events", async (request, reply) => {
+    reply.hijack();
+
+    const raw = reply.raw;
+    raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    raw.write(":ok\n\n");
+
+    const interval = setInterval(() => {
+      try {
+        raw.write(":ping\n\n");
+      } catch {
+        // Client gone, cleanup below
+      }
+    }, SSE_KEEPALIVE_MS);
+
+    const client = { raw, interval };
+    sseClients.add(client);
+    snapLog("SSE_CLIENT_CONNECTED", { total: sseClients.size });
+
+    request.raw.on("close", () => {
+      clearInterval(interval);
+      sseClients.delete(client);
+      snapLog("SSE_CLIENT_DISCONNECTED", { total: sseClients.size });
+    });
+  });
 }

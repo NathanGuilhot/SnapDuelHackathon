@@ -15,6 +15,7 @@ const PROJECT_ROOT = join(__dirname, "..");
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const FISHJAM_ID = process.env.FISHJAM_ID;
+const DISABLE_AI_IMAGES = process.env.VITE_DISABLE_AI_IMAGES === "true";
 
 if (!GEMINI_API_KEY) {
   snapLog("FATAL", { error: "GEMINI_API_KEY is not set" });
@@ -71,12 +72,17 @@ app.get("/health", async () => {
 registerGenerateCard(app, {
   geminiApiKey: GEMINI_API_KEY,
   uploadsDir: UPLOADS_DIR,
+  disableAiImages: DISABLE_AI_IMAGES,
 });
 
-registerNanoBanana(app, {
-  geminiApiKey: GEMINI_API_KEY,
-  uploadsDir: UPLOADS_DIR,
-});
+if (!DISABLE_AI_IMAGES) {
+  registerNanoBanana(app, {
+    geminiApiKey: GEMINI_API_KEY,
+    uploadsDir: UPLOADS_DIR,
+  });
+} else {
+  snapLog("INIT", { aiImages: "DISABLED" });
+}
 
 try {
   await app.listen({ port: PORT, host: "0.0.0.0" });

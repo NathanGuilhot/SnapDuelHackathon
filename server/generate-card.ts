@@ -14,7 +14,7 @@ import { triggerNanoBanana } from "./nano-banana.js";
 
 export function registerGenerateCard(
   app: FastifyInstance,
-  opts: { geminiApiKey: string; uploadsDir: string },
+  opts: { geminiApiKey: string; uploadsDir: string; disableAiImages?: boolean },
 ): void {
   const ai = new GoogleGenAI({ apiKey: opts.geminiApiKey });
 
@@ -132,7 +132,7 @@ export function registerGenerateCard(
     }
 
     // 6. Kick off AI illustration in background
-    if (card.illustration_prompt) {
+    if (!opts.disableAiImages && card.illustration_prompt) {
       triggerNanoBanana(card.id, card.illustration_prompt, {
         base64,
         mimeType: resized.mimetype,

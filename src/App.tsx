@@ -21,7 +21,7 @@ import { generateSoloOpponents, soloPickCard } from "./lib/soloOpponent"
 import snapDuelLogo from "./assets/snapduellogo.png"
 import { snapLog } from "../shared/debug.ts"
 import { useGameChannel } from "./hooks/useGameChannel"
-import { useAiImage } from "./hooks/useAiImage"
+import { useAiImageEvents } from "./hooks/useAiImageEvents"
 import { useOpponentDisconnect } from "./hooks/useOpponentDisconnect"
 import { resolveBattle } from "../shared/battle.ts"
 import { createMatchState, applyRoundResult, isMatchOver, getMatchWinner, getAvailableIndices } from "../shared/match.ts"
@@ -80,7 +80,8 @@ function App() {
   const [opponentShuffled, setOpponentShuffled] = useState(0)
   const hoverStaleRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const { aiImageUrl, aiImageState } = useAiImage(card?.id ?? null)
+  const { statuses: aiStatuses, markPending: markAiPending } = useAiImageEvents()
+  const appliedRef = useRef<Set<string>>(new Set())
 
   const { leaveRoom } = useConnection()
   const { remotePeers } = usePeers<PeerMetadata>()
@@ -181,23 +182,36 @@ function App() {
     }
   }, [gameChannel.ready, gameChannel.localPeerId, isSolo]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Swap card image when AI illustration arrives
+  // Swap card images when AI illustrations arrive (handles all cards)
   useEffect(() => {
-    if (!card || !aiImageUrl) return
-    setCard((prev) => prev ? { ...prev, imageUrl: aiImageUrl } : prev)
-    setHand((prev) => {
-      const updated = prev.map((c) =>
-        c.id === card.id ? { ...c, imageUrl: aiImageUrl } : c,
-      )
-      saveHand(updated)
-      return updated
+    let changed = false
+    const newHand = hand.map((c) => {
+      const st = aiStatuses.get(c.id)
+      if (st?.status === "ready" && !appliedRef.current.has(c.id)) {
+        appliedRef.current.add(c.id)
+        changed = true
+        updateCollectionCard(c.id, { imageUrl: st.url })
+        return { ...c, imageUrl: st.url }
+      }
+      return c
     })
-    // Update permanent collection too
-    updateCollectionCard(card.id, { imageUrl: aiImageUrl })
-    setCollection((prev) =>
-      prev.map((c) => c.id === card.id ? { ...c, imageUrl: aiImageUrl } : c),
-    )
-  }, [aiImageUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (changed) {
+      setHand(newHand)
+      saveHand(newHand)
+      setCollection((prev) =>
+        prev.map((c) => {
+          const st = aiStatuses.get(c.id)
+          return st?.status === "ready" && st.url ? { ...c, imageUrl: st.url } : c
+        }),
+      )
+      // Also update current card preview if applicable
+      setCard((prev) => {
+        if (!prev) return prev
+        const st = aiStatuses.get(prev.id)
+        return st?.status === "ready" ? { ...prev, imageUrl: st.url } : prev
+      })
+    }
+  }, [aiStatuses]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Host: advance to PICKING when both hands ready
   useEffect(() => {
@@ -333,6 +347,7 @@ function App() {
 
       const data: Card = await res.json()
       setCard(data)
+      markAiPending(data.id)
 
       // Add to hand and persist
       const newHand = [...hand, data]
@@ -653,8 +668,6 @@ function App() {
           isGenerating={loading}
           generatingPreviewUrl={previewUrl}
           generatingError={error}
-          aiImageUrl={aiImageUrl}
-          aiGenerating={aiImageState === "generating"}
           handReady={handReady}
           opponentReady={opponentReady}
           onCapture={handleCapture}
