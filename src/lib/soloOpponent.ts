@@ -32,3 +32,11 @@ export function generateSoloOpponent(): Card {
     imageUrl: "/placeholder-opponent.svg",
   }
 }
+
+export function generateSoloOpponents(count: number = 3): Card[] {
+  return Array.from({ length: count }, () => generateSoloOpponent())
+}
+
+export function soloPickCard(availableIndices: number[]): number {
+  return availableIndices[Math.floor(Math.random() * availableIndices.length)]
+}

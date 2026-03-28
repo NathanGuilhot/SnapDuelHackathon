@@ -34,6 +34,7 @@ const config = defineConfig({
       display: "flex",
       flexDirection: "column",
       boxSizing: "border-box",
+      overflowY: "auto",
     },
   },
   theme: {

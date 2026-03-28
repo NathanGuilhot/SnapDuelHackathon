@@ -5,7 +5,7 @@ import type { Card, RoundResult, ElementAdvantage } from "../../shared/types"
 
 /* ── Props ─────────────────────────────────────────────────────── */
 
-type BattlePhase = "PICKING" | "REVEAL" | "RESOLUTION" | "MATCH_END"
+type BattlePhase = "PICKING" | "REVEAL" | "RESOLUTION" | "ROUND_SUMMARY" | "MATCH_END"
 
 interface BattleArenaProps {
   phase: BattlePhase
@@ -17,6 +17,12 @@ interface BattleArenaProps {
   isHost: boolean
   onPickCard: (index: number) => void
   onPlayAgain: () => void
+  onRematch: () => void
+  scoreA: number
+  scoreB: number
+  currentRound: number
+  usedIndices: number[]
+  allRounds: RoundResult[]
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────── */
@@ -45,8 +51,8 @@ const BATTLE_KEYFRAMES = `
   100% { transform: scaleX(var(--hp-to)); }
 }
 @keyframes winnerGlow {
-  0%, 100% { box-shadow: 0 0 20px 5px rgba(255,215,0,0.4); }
-  50%      { box-shadow: 0 0 40px 15px rgba(255,215,0,0.7), 0 0 80px 30px rgba(255,215,0,0.3); }
+  0%, 100% { box-shadow: 0 0 12px 4px rgba(255,215,0,0.4); }
+  50%      { box-shadow: 0 0 25px 10px rgba(255,215,0,0.7), 0 0 50px 20px rgba(255,215,0,0.3); }
 }
 @keyframes loserDim {
   0%   { filter: brightness(1) grayscale(0); }
@@ -74,6 +80,11 @@ const BATTLE_KEYFRAMES = `
   0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
   60%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
   100% { transform: scale(1) rotate(0deg); }
+}
+@keyframes scorePop {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
 }
 `
 
@@ -135,6 +146,8 @@ function CardSlot({
   damage,
   remainingHp,
   showDamage,
+  cardWidth,
+  cardHeight,
 }: {
   card: Card
   animation: string
@@ -144,8 +157,13 @@ function CardSlot({
   damage?: number
   remainingHp?: number
   showDamage?: boolean
+  cardWidth: number
+  cardHeight: number
 }) {
   const hpFraction = remainingHp != null ? Math.max(0, remainingHp / card.hp) : 1
+  const ratio = cardWidth / 280
+  const hpBarW = `${Math.round(180 * ratio)}px`
+  const dmgFontSize = `${Math.max(16, Math.round(30 * ratio))}px`
 
   return (
     <Box
@@ -156,11 +174,9 @@ function CardSlot({
         ...(isWinner ? { animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both, winnerGlow 1.5s ease-in-out infinite` } : {}),
         ...(isLoser ? { animation: `${animation} 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both, loserDim 800ms ease-out forwards` } : {}),
       }}
-      borderRadius="18px"
+      borderRadius={`${Math.max(10, Math.round(18 * ratio))}px`}
     >
-      <Box transform="scale(0.78)" transformOrigin="center">
-        <CardBattle card={card} />
-      </Box>
+      <CardBattle card={card} width={cardWidth} height={cardHeight} />
 
       {/* Damage number floating up */}
       {showDamage && damage != null && (
@@ -169,7 +185,7 @@ function CardSlot({
           top="30%"
           left="50%"
           transform="translateX(-50%)"
-          fontSize="3xl"
+          fontSize={dmgFontSize}
           fontWeight="900"
           fontFamily="'Cinzel', Georgia, serif"
           color="#ff4444"
@@ -193,7 +209,7 @@ function CardSlot({
           bottom="-4px"
           left="50%"
           transform="translateX(-50%)"
-          w="180px"
+          w={hpBarW}
           h="8px"
           bg="rgba(0,0,0,0.6)"
           borderRadius="full"
@@ -222,7 +238,7 @@ function CardSlot({
 function VsBadge() {
   return (
     <Text
-      fontSize="4xl"
+      fontSize="3xl"
       fontWeight="900"
       fontFamily="'Cinzel', Georgia, serif"
       color="#F27405"
@@ -238,6 +254,57 @@ function VsBadge() {
   )
 }
 
+/* ── Score Banner ──────────────────────────────────────────────── */
+
+function ScoreBanner({
+  scoreA,
+  scoreB,
+  currentRound,
+  isHost,
+}: {
+  scoreA: number
+  scoreB: number
+  currentRound: number
+  isHost: boolean
+}) {
+  const myScore = isHost ? scoreA : scoreB
+  const oppScore = isHost ? scoreB : scoreA
+
+  return (
+    <HStack justify="center" gap="3" py="1" w="full">
+      <HStack gap="2">
+        <Text
+          fontSize="sm"
+          fontWeight="700"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="#ffd700"
+        >
+          You {myScore}
+        </Text>
+        <Text fontSize="sm" color="fg.muted" fontWeight="700">
+          -
+        </Text>
+        <Text
+          fontSize="sm"
+          fontWeight="700"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="#e05252"
+        >
+          {oppScore} Opp
+        </Text>
+      </HStack>
+      <Text
+        fontSize="xs"
+        color="fg.muted"
+        fontFamily="'Cinzel', Georgia, serif"
+        fontWeight="600"
+      >
+        Round {currentRound}
+      </Text>
+    </HStack>
+  )
+}
+
 /* ── Picking Phase ─────────────────────────────────────────────── */
 
 function PickingPhase({
@@ -245,92 +312,125 @@ function PickingPhase({
   selectedIndex,
   opponentPicked,
   onPickCard,
+  usedIndices,
+  currentRound,
 }: {
   myCards: Card[]
   selectedIndex: number | null
   opponentPicked: boolean
   onPickCard: (index: number) => void
+  usedIndices: number[]
+  currentRound: number
 }) {
   const picked = selectedIndex !== null
+  const usedSet = new Set(usedIndices)
+
+  const PICK_CARD_W = 116
+  const PICK_CARD_H = 166
 
   return (
-    <VStack gap="5" align="center" w="full">
+    <VStack gap="3" align="center" w="full">
       <Text
-        fontSize="2xl"
+        fontSize="xl"
         fontWeight="700"
         fontFamily="'Cinzel', Georgia, serif"
         color="fg.heading"
         textShadow="0 0 20px rgba(242,116,5,0.3)"
       >
-        Choose Your Champion
+        Round {currentRound}
       </Text>
 
       <SimpleGrid columns={{ base: 2, md: 3 }} gap="3" justifyItems="center" w="full">
-        {myCards.map((card, i) => (
-          <Box
-            key={card.id}
-            w="154px"
-            h="220px"
-            position="relative"
-            cursor={picked ? "default" : "pointer"}
-            onClick={() => !picked && onPickCard(i)}
-            opacity={picked && selectedIndex !== i ? 0.4 : 1}
-            transition="opacity 0.3s, transform 0.2s"
-            _hover={!picked ? { transform: "translateY(-4px)" } : undefined}
-            style={
-              !picked
-                ? { animation: "pickGlow 2s ease-in-out infinite" }
-                : selectedIndex === i
-                  ? { animation: "winnerGlow 1.5s ease-in-out infinite" }
-                  : undefined
-            }
-            borderRadius="18px"
-            overflow="visible"
-          >
-            <Box transform="scale(0.55)" transformOrigin="top left">
-              <CardBattle card={card} />
-            </Box>
+        {myCards.map((card, i) => {
+          const isUsed = usedSet.has(i)
+          const isPickable = !picked && !isUsed
 
-            {/* Selected checkmark overlay */}
-            {picked && selectedIndex === i && (
-              <Box
-                position="absolute"
-                top="50%"
-                left="50%"
-                transform="translate(-50%, -50%)"
-                w="40px"
-                h="40px"
-                borderRadius="full"
-                bg="rgba(34,170,68,0.9)"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                style={{ animation: "selectedCheck 500ms cubic-bezier(0.34,1.56,0.64,1) both" }}
-                zIndex={15}
-                border="3px solid rgba(255,255,255,0.3)"
-                boxShadow="0 0 20px rgba(34,170,68,0.5)"
-              >
-                <Text fontSize="lg" lineHeight="1">
-                  {"\u2714"}
-                </Text>
-              </Box>
-            )}
-          </Box>
-        ))}
+          return (
+            <Box
+              key={card.id}
+              w={`${PICK_CARD_W}px`}
+              h={`${PICK_CARD_H}px`}
+              position="relative"
+              cursor={isPickable ? "pointer" : "default"}
+              onClick={() => isPickable && onPickCard(i)}
+              opacity={isUsed ? 0.25 : picked && selectedIndex !== i ? 0.4 : 1}
+              transition="opacity 0.3s, transform 0.2s"
+              _hover={isPickable ? { transform: "translateY(-4px)" } : undefined}
+              style={
+                isUsed
+                  ? undefined
+                  : !picked
+                    ? { animation: "pickGlow 2s ease-in-out infinite" }
+                    : selectedIndex === i
+                      ? { animation: "winnerGlow 1.5s ease-in-out infinite" }
+                      : undefined
+              }
+              borderRadius="12px"
+              overflow="visible"
+              pointerEvents={isUsed ? "none" : "auto"}
+            >
+              <CardBattle card={card} width={PICK_CARD_W} height={PICK_CARD_H} />
+
+              {/* USED badge */}
+              {isUsed && (
+                <Box
+                  position="absolute"
+                  top="50%"
+                  left="50%"
+                  transform="translate(-50%, -50%)"
+                  bg="rgba(0,0,0,0.7)"
+                  borderRadius="full"
+                  px="3"
+                  py="1"
+                  zIndex={15}
+                >
+                  <Text fontSize="xs" fontWeight="700" color="fg.muted" letterSpacing="0.1em">
+                    USED
+                  </Text>
+                </Box>
+              )}
+
+              {/* Selected checkmark overlay */}
+              {picked && selectedIndex === i && (
+                <Box
+                  position="absolute"
+                  top="50%"
+                  left="50%"
+                  transform="translate(-50%, -50%)"
+                  w="36px"
+                  h="36px"
+                  borderRadius="full"
+                  bg="rgba(34,170,68,0.9)"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  style={{ animation: "selectedCheck 500ms cubic-bezier(0.34,1.56,0.64,1) both" }}
+                  zIndex={15}
+                  border="3px solid rgba(255,255,255,0.3)"
+                  boxShadow="0 0 20px rgba(34,170,68,0.5)"
+                >
+                  <Text fontSize="md" lineHeight="1">
+                    {"\u2714"}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+          )
+        })}
       </SimpleGrid>
 
       {/* Status text */}
       {picked ? (
         <HStack gap="3">
           {!opponentPicked && <Spinner size="sm" color="accent" />}
-          <Text color="fg.muted" fontWeight="500" fontSize="lg">
+          <Text color="fg.muted" fontWeight="500" fontSize="md">
             {opponentPicked
               ? "Both ready — resolving battle..."
               : "Waiting for opponent\u2019s pick..."}
           </Text>
         </HStack>
       ) : (
-        <Text color="fg.muted" fontSize="md" fontStyle="italic">
+        <Text color="fg.muted" fontSize="sm" fontStyle="italic">
           Tap a card to play it
         </Text>
       )}
@@ -352,10 +452,13 @@ function RevealPhase({
   const myAdv = getMyAdvantage(roundResult, isHost)
   const advText = advantageText(myAdv, myCard.element, oppCard.element)
 
+  const BATTLE_CARD_W = 170
+  const BATTLE_CARD_H = 243
+
   return (
-    <VStack gap="3" align="center" w="full">
+    <VStack gap="2" align="center" w="full">
       <Text
-        fontSize="2xl"
+        fontSize="xl"
         fontWeight="700"
         fontFamily="'Cinzel', Georgia, serif"
         color="fg.heading"
@@ -365,17 +468,17 @@ function RevealPhase({
       </Text>
 
       {/* Opponent's card (top) */}
-      <CardSlot card={oppCard} animation="slideFromTop" delay="0ms" />
+      <CardSlot card={oppCard} animation="slideFromTop" delay="0ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
 
       <VsBadge />
 
       {/* My card (bottom) */}
-      <CardSlot card={myCard} animation="slideFromBottom" delay="300ms" />
+      <CardSlot card={myCard} animation="slideFromBottom" delay="300ms" cardWidth={BATTLE_CARD_W} cardHeight={BATTLE_CARD_H} />
 
       {/* Element advantage text */}
       {advText && (
         <Text
-          fontSize="lg"
+          fontSize="md"
           fontWeight="700"
           fontFamily="'Cinzel', Georgia, serif"
           color={myAdv === "strong" ? "#22cc44" : "#cc4444"}
@@ -414,10 +517,13 @@ function ResolutionPhase({
   const iWin = didIWin(roundResult, isHost)
   const draw = didIDraw(roundResult)
 
+  const BATTLE_CARD_W = 170
+  const BATTLE_CARD_H = 243
+
   return (
-    <VStack gap="3" align="center" w="full">
+    <VStack gap="2" align="center" w="full">
       <Text
-        fontSize="2xl"
+        fontSize="xl"
         fontWeight="700"
         fontFamily="'Cinzel', Georgia, serif"
         color="fg.heading"
@@ -436,6 +542,8 @@ function ResolutionPhase({
         damage={oppDmg}
         remainingHp={oppRemHp}
         showDamage
+        cardWidth={BATTLE_CARD_W}
+        cardHeight={BATTLE_CARD_H}
       />
 
       <VsBadge />
@@ -450,7 +558,90 @@ function ResolutionPhase({
         damage={myDmg}
         remainingHp={myRemHp}
         showDamage
+        cardWidth={BATTLE_CARD_W}
+        cardHeight={BATTLE_CARD_H}
       />
+    </VStack>
+  )
+}
+
+/* ── Round Summary Phase ──────────────────────────────────────── */
+
+function RoundSummaryPhase({
+  allRounds,
+  isHost,
+  scoreA,
+  scoreB,
+}: {
+  allRounds: RoundResult[]
+  isHost: boolean
+  scoreA: number
+  scoreB: number
+}) {
+  const lastRound = allRounds[allRounds.length - 1]
+  if (!lastRound) return null
+
+  const iWin = didIWin(lastRound, isHost)
+  const draw = didIDraw(lastRound)
+  const myScore = isHost ? scoreA : scoreB
+  const oppScore = isHost ? scoreB : scoreA
+
+  const roundLabel = draw ? "ROUND DRAW" : iWin ? "ROUND WON!" : "ROUND LOST"
+  const roundColor = draw ? "#F27405" : iWin ? "#ffd700" : "#e05252"
+
+  return (
+    <VStack gap="5" align="center" w="full" py="8">
+      <Text
+        fontSize="3xl"
+        fontWeight="900"
+        fontFamily="'Cinzel', Georgia, serif"
+        color={roundColor}
+        letterSpacing="0.05em"
+        style={{
+          animation: "victoryText 600ms cubic-bezier(0.34,1.56,0.64,1) both",
+        }}
+        lineHeight="1"
+      >
+        {roundLabel}
+      </Text>
+
+      {/* Score */}
+      <HStack gap="4" style={{ animation: "scorePop 500ms ease-out both", animationDelay: "0.3s" }}>
+        <Text
+          fontSize="5xl"
+          fontWeight="900"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="#ffd700"
+          lineHeight="1"
+        >
+          {myScore}
+        </Text>
+        <Text
+          fontSize="3xl"
+          fontWeight="700"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="fg.muted"
+          lineHeight="1"
+        >
+          -
+        </Text>
+        <Text
+          fontSize="5xl"
+          fontWeight="900"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="#e05252"
+          lineHeight="1"
+        >
+          {oppScore}
+        </Text>
+      </HStack>
+
+      <HStack gap="3">
+        <Spinner size="sm" color="accent" />
+        <Text color="fg.muted" fontWeight="500" fontSize="md">
+          Next round starting...
+        </Text>
+      </HStack>
     </VStack>
   )
 }
@@ -458,21 +649,28 @@ function ResolutionPhase({
 /* ── Match End Phase ───────────────────────────────────────────── */
 
 function MatchEndPhase({
-  roundResult,
-  matchWinner: _matchWinner,
+  matchWinner,
   isHost,
   onPlayAgain,
+  onRematch,
+  scoreA,
+  scoreB,
+  allRounds,
 }: {
-  roundResult: RoundResult
   matchWinner: "A" | "B" | "draw" | null
   isHost: boolean
   onPlayAgain: () => void
+  onRematch: () => void
+  scoreA: number
+  scoreB: number
+  allRounds: RoundResult[]
 }) {
-  const iWin = didIWin(roundResult, isHost)
-  const draw = didIDraw(roundResult)
-  const myCard = getMyCard(roundResult, isHost)
-  const oppCard = getOppCard(roundResult, isHost)
-  const oppDmg = getOppDamage(roundResult, isHost)
+  const iWin = matchWinner === null
+    ? false
+    : (isHost && matchWinner === "A") || (!isHost && matchWinner === "B")
+  const draw = matchWinner === "draw"
+  const myScore = isHost ? scoreA : scoreB
+  const oppScore = isHost ? scoreB : scoreA
 
   const resultLabel = draw ? "DRAW" : iWin ? "VICTORY" : "DEFEAT"
   const resultColor = draw ? "#F27405" : iWin ? "#ffd700" : "#e05252"
@@ -482,11 +680,14 @@ function MatchEndPhase({
       ? "victoryPulse 2s ease-in-out infinite"
       : "defeatPulse 2s ease-in-out infinite"
 
+  const MINI_CARD_W = 80
+  const MINI_CARD_H = 114
+
   return (
-    <VStack gap="5" align="center" w="full">
+    <VStack gap="4" align="center" w="full">
       {/* Result banner */}
       <Text
-        fontSize="5xl"
+        fontSize="4xl"
         fontWeight="900"
         fontFamily="'Cinzel', Georgia, serif"
         color={resultColor}
@@ -499,52 +700,104 @@ function MatchEndPhase({
         {resultLabel}
       </Text>
 
-      {/* Both cards side by side — winner glowing, loser dimmed */}
-      <HStack gap="2" justify="center" align="start" flexWrap="wrap">
-        <CardSlot
-          card={myCard}
-          animation="slideFromBottom"
-          delay="0.3s"
-          isWinner={iWin}
-          isLoser={!iWin && !draw}
-        />
-        <CardSlot
-          card={oppCard}
-          animation="slideFromTop"
-          delay="0.5s"
-          isWinner={!iWin && !draw}
-          isLoser={iWin}
-        />
+      {/* Final score */}
+      <HStack gap="3">
+        <Text
+          fontSize="3xl"
+          fontWeight="900"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="#ffd700"
+          lineHeight="1"
+        >
+          {myScore}
+        </Text>
+        <Text fontSize="xl" color="fg.muted" fontWeight="700" lineHeight="1">-</Text>
+        <Text
+          fontSize="3xl"
+          fontWeight="900"
+          fontFamily="'Cinzel', Georgia, serif"
+          color="#e05252"
+          lineHeight="1"
+        >
+          {oppScore}
+        </Text>
       </HStack>
 
-      {/* Summary */}
-      {!draw && (
-        <Text
-          color="fg"
-          fontSize="md"
-          fontFamily="'Cinzel', Georgia, serif"
-          textAlign="center"
-          maxW="300px"
-        >
-          {iWin
-            ? `${myCard.name} dealt ${oppDmg} damage!`
-            : `${oppCard.name} overpowered ${myCard.name}!`}
-        </Text>
-      )}
+      {/* Round-by-round summary */}
+      <VStack gap="2" w="full" maxW="380px">
+        {allRounds.map((round, idx) => {
+          const myCard = getMyCard(round, isHost)
+          const oppCard = getOppCard(round, isHost)
+          const roundWin = didIWin(round, isHost)
+          const roundDraw = didIDraw(round)
 
-      <Button
-        size="lg"
-        colorPalette="orange"
-        w="full"
-        maxW="320px"
-        mt="2"
-        onClick={onPlayAgain}
-        fontFamily="'Cinzel', Georgia, serif"
-        fontWeight="700"
-        letterSpacing="0.05em"
-      >
-        Play Again
-      </Button>
+          return (
+            <HStack
+              key={idx}
+              w="full"
+              justify="center"
+              gap="3"
+              py="2"
+              px="3"
+              borderRadius="lg"
+              bg="rgba(255,255,255,0.03)"
+              border="1px solid"
+              borderColor="border"
+            >
+              <Box borderRadius="8px" overflow="visible">
+                <CardBattle card={myCard} width={MINI_CARD_W} height={MINI_CARD_H} />
+              </Box>
+              <VStack gap="0">
+                <Text
+                  fontSize="xs"
+                  fontWeight="700"
+                  fontFamily="'Cinzel', Georgia, serif"
+                  color="fg.muted"
+                >
+                  R{idx + 1}
+                </Text>
+                <Text
+                  fontSize="sm"
+                  fontWeight="700"
+                  fontFamily="'Cinzel', Georgia, serif"
+                  color={roundDraw ? "#F27405" : roundWin ? "#ffd700" : "#e05252"}
+                >
+                  {roundDraw ? "Draw" : roundWin ? "Won" : "Lost"}
+                </Text>
+              </VStack>
+              <Box borderRadius="8px" overflow="visible">
+                <CardBattle card={oppCard} width={MINI_CARD_W} height={MINI_CARD_H} />
+              </Box>
+            </HStack>
+          )
+        })}
+      </VStack>
+
+      {/* Buttons */}
+      <VStack gap="2" w="full" maxW="320px" mt="2">
+        <Button
+          size="lg"
+          colorPalette="orange"
+          w="full"
+          onClick={onRematch}
+          fontFamily="'Cinzel', Georgia, serif"
+          fontWeight="700"
+          letterSpacing="0.05em"
+        >
+          Rematch
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          colorPalette="teal"
+          w="full"
+          onClick={onPlayAgain}
+          fontFamily="'Cinzel', Georgia, serif"
+          fontWeight="600"
+        >
+          Back to Lobby
+        </Button>
+      </VStack>
     </VStack>
   )
 }
@@ -561,6 +814,12 @@ export default function BattleArena({
   isHost,
   onPickCard,
   onPlayAgain,
+  onRematch,
+  scoreA,
+  scoreB,
+  currentRound,
+  usedIndices,
+  allRounds,
 }: BattleArenaProps) {
   // Auto-advance from REVEAL to RESOLUTION after dramatic pause
   const [localPhase, setLocalPhase] = useState<BattlePhase>(phase)
@@ -580,13 +839,20 @@ export default function BattleArena({
     <>
       <style>{BATTLE_KEYFRAMES}</style>
 
-      <Box w="full" maxW="500px" px="2">
+      <Box w="full" maxW="500px" px="2" maxH="100dvh" display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+        {/* Score banner — show during picking, reveal, resolution, round-summary */}
+        {localPhase !== "MATCH_END" && (
+          <ScoreBanner scoreA={scoreA} scoreB={scoreB} currentRound={currentRound} isHost={isHost} />
+        )}
+
         {localPhase === "PICKING" && (
           <PickingPhase
             myCards={myCards}
             selectedIndex={selectedIndex}
             opponentPicked={opponentPicked}
             onPickCard={onPickCard}
+            usedIndices={usedIndices}
+            currentRound={currentRound}
           />
         )}
 
@@ -598,12 +864,24 @@ export default function BattleArena({
           <ResolutionPhase roundResult={roundResult} isHost={isHost} />
         )}
 
-        {localPhase === "MATCH_END" && roundResult && (
+        {localPhase === "ROUND_SUMMARY" && (
+          <RoundSummaryPhase
+            allRounds={allRounds}
+            isHost={isHost}
+            scoreA={scoreA}
+            scoreB={scoreB}
+          />
+        )}
+
+        {localPhase === "MATCH_END" && (
           <MatchEndPhase
-            roundResult={roundResult}
             matchWinner={matchWinner}
             isHost={isHost}
             onPlayAgain={onPlayAgain}
+            onRematch={onRematch}
+            scoreA={scoreA}
+            scoreB={scoreB}
+            allRounds={allRounds}
           />
         )}
       </Box>

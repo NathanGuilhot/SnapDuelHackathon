@@ -28,3 +28,7 @@ export const CARD_ILLUSTRATION_SIZE = 512;
 export const NANO_BANANA_TIMEOUT = 20000;
 
 export const STAT_KEYS = ["attack", "defense", "hp"] as const;
+
+export const HAND_SIZE = 3;
+export const WINS_NEEDED = 2;
+export const MAX_ROUNDS = 3;

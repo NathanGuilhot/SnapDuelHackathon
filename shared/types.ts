@@ -11,7 +11,17 @@ export type GamePhase =
   | "PICKING"
   | "REVEAL"
   | "RESOLUTION"
+  | "ROUND_SUMMARY"
   | "MATCH_END";
+
+export interface MatchState {
+  currentRound: number;
+  rounds: RoundResult[];
+  scoreA: number;
+  scoreB: number;
+  usedIndicesA: number[];
+  usedIndicesB: number[];
+}
 
 export interface Card {
   id: string;
@@ -45,7 +55,8 @@ export type GameMessage =
   | { type: "HAND_READY"; playerId: string; cardCount: number; cards: Card[] }
   | { type: "CARD_PICKED"; playerId: string; cardIndex: number }
   | { type: "ROUND_REVEAL"; result: RoundResult }
-  | { type: "MATCH_RESULT"; winner: string | null; rounds: RoundResult[] }
+  | { type: "NEXT_ROUND"; round: number; scoreA: number; scoreB: number }
+  | { type: "MATCH_RESULT"; winner: string | null; rounds: RoundResult[]; scoreA: number; scoreB: number }
   | { type: "PHASE_CHANGE"; phase: GamePhase };
 
 export interface GameEnvelope {

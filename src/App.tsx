@@ -3,28 +3,27 @@ import {
   Box,
   Button,
   Heading,
-  Image,
-  Spinner,
   Text,
   VStack,
   HStack,
 } from "@chakra-ui/react"
 import { useConnection, usePeers } from "@fishjam-cloud/react-client"
-import CameraCapture from "./components/CameraCapture"
-import CardBattle from "./components/Card"
 import BattleArena from "./components/BattleArena"
 import CreateRoom from "./components/CreateRoom"
-import { ErrorTap } from "./components/ErrorModal"
 import MyCards from "./components/MyCards"
 import JoinRoom from "./components/JoinRoom"
+import HandBuilder from "./components/HandBuilder"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { saveHand, loadHand, clearHand } from "./lib/handStorage"
-import { generateSoloOpponent } from "./lib/soloOpponent"
+import { saveToCollection, updateCollectionCard, loadCollection } from "./lib/collectionStorage"
+import { generateSoloOpponents, soloPickCard } from "./lib/soloOpponent"
 import { snapLog } from "../shared/debug.ts"
 import { useGameChannel } from "./hooks/useGameChannel"
 import { useAiImage } from "./hooks/useAiImage"
 import { resolveBattle } from "../shared/battle.ts"
-import type { Card, GameMessage, PeerMetadata, RoundResult } from "../shared/types.ts"
+import { createMatchState, applyRoundResult, isMatchOver, getMatchWinner, getAvailableIndices } from "../shared/match.ts"
+import type { Card, GameMessage, MatchState, PeerMetadata, RoundResult } from "../shared/types.ts"
+import { HAND_SIZE } from "../shared/constants.ts"
 
 type Screen =
   | "lobby"
@@ -32,6 +31,7 @@ type Screen =
   | "card-building"
   | "picking"
   | "reveal"
+  | "round-summary"
   | "match-end"
   | "my-cards"
 
@@ -60,6 +60,7 @@ function App() {
 
   // Hand & battle state
   const [hand, setHand] = useState<Card[]>(() => loadHand())
+  const [collection, setCollection] = useState<Card[]>(() => loadCollection())
   const [handReady, setHandReady] = useState(false)
   const [opponentCards, setOpponentCards] = useState<Card[]>([])
   const [opponentReady, setOpponentReady] = useState(false)
@@ -67,6 +68,7 @@ function App() {
   const [opponentPickedIndex, setOpponentPickedIndex] = useState<number | null>(null)
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
   const [matchWinner, setMatchWinner] = useState<"A" | "B" | "draw" | null>(null)
+  const [matchState, setMatchState] = useState<MatchState | null>(null)
   const [disconnected, setDisconnected] = useState(false)
 
   // AI illustration polling
@@ -101,13 +103,30 @@ function App() {
         setScreen("reveal")
       },
 
+      NEXT_ROUND: (msg: GameMessage & { type: "NEXT_ROUND" }) => {
+        snapLog("NEXT_ROUND_RECV", { round: msg.round, scoreA: msg.scoreA, scoreB: msg.scoreB })
+        setMatchState((prev) => prev ? {
+          ...prev,
+          currentRound: msg.round,
+          scoreA: msg.scoreA,
+          scoreB: msg.scoreB,
+        } : prev)
+        setSelectedIndex(null)
+        setOpponentPickedIndex(null)
+        setRoundResult(null)
+        setScreen("round-summary")
+      },
+
       MATCH_RESULT: (msg: GameMessage & { type: "MATCH_RESULT" }) => {
-        snapLog("MATCH_RESULT_RECV", { winner: msg.winner })
-        // Determine winner from our perspective
-        const result = msg.rounds[0]
-        if (result) {
-          setMatchWinner(result.winner)
-        }
+        snapLog("MATCH_RESULT_RECV", { winner: msg.winner, scoreA: msg.scoreA, scoreB: msg.scoreB })
+        const winner = msg.scoreA > msg.scoreB ? "A" : msg.scoreB > msg.scoreA ? "B" : "draw"
+        setMatchWinner(winner)
+        setMatchState((prev) => prev ? {
+          ...prev,
+          rounds: msg.rounds,
+          scoreA: msg.scoreA,
+          scoreB: msg.scoreB,
+        } : prev)
         setScreen("match-end")
       },
 
@@ -159,6 +178,11 @@ function App() {
       saveHand(updated)
       return updated
     })
+    // Update permanent collection too
+    updateCollectionCard(card.id, { imageUrl: aiImageUrl })
+    setCollection((prev) =>
+      prev.map((c) => c.id === card.id ? { ...c, imageUrl: aiImageUrl } : c),
+    )
   }, [aiImageUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Host: advance to PICKING when both hands ready
@@ -172,9 +196,10 @@ function App() {
 
   // Host: resolve battle when both picks are in
   useEffect(() => {
-    if (!isHost) return
+    if (!isHost && !isSolo) return
     if (selectedIndex === null || opponentPickedIndex === null) return
     if (roundResult) return // already resolved
+    if (!matchState) return
 
     const myCard = hand[selectedIndex]
     const oppCard = opponentCards[opponentPickedIndex]
@@ -183,47 +208,71 @@ function App() {
     snapLog("RESOLVING_BATTLE", {
       myCard: myCard.name,
       oppCard: oppCard.name,
+      round: matchState.currentRound,
     })
 
     // cardA = host's card, cardB = opponent's card
-    const result = resolveBattle(myCard, oppCard)
+    const result = resolveBattle(myCard, oppCard, matchState.currentRound)
     setRoundResult(result)
 
-    // Broadcast reveal
-    gameChannel.broadcast({ type: "ROUND_REVEAL", result })
+    // Broadcast reveal (multiplayer only)
+    if (!isSolo) {
+      gameChannel.broadcast({ type: "ROUND_REVEAL", result })
+    }
     setScreen("reveal")
 
-    // After reveal drama, broadcast match result
+    // After reveal drama, check if match is over or advance to next round
     const timer = setTimeout(() => {
-      const winner = result.winner === "draw"
-        ? null
-        : result.winner === "A"
-          ? gameChannel.localPeerId
-          : "opponent"
-      gameChannel.broadcast({
-        type: "MATCH_RESULT",
-        winner,
-        rounds: [result],
-      })
-      setMatchWinner(result.winner)
-      setScreen("match-end")
+      const newState = applyRoundResult(matchState, result, selectedIndex, opponentPickedIndex)
+      setMatchState(newState)
+
+      if (isMatchOver(newState)) {
+        const winner = getMatchWinner(newState)
+        const winnerStr = winner === "draw"
+          ? null
+          : winner === "A"
+            ? (isSolo ? "host" : gameChannel.localPeerId)
+            : "opponent"
+
+        if (!isSolo) {
+          gameChannel.broadcast({
+            type: "MATCH_RESULT",
+            winner: winnerStr,
+            rounds: newState.rounds,
+            scoreA: newState.scoreA,
+            scoreB: newState.scoreB,
+          })
+        }
+        setMatchWinner(winner)
+        setScreen("match-end")
+      } else {
+        // Next round
+        if (!isSolo) {
+          gameChannel.broadcast({
+            type: "NEXT_ROUND",
+            round: newState.currentRound,
+            scoreA: newState.scoreA,
+            scoreB: newState.scoreB,
+          })
+        }
+        setSelectedIndex(null)
+        setOpponentPickedIndex(null)
+        setRoundResult(null)
+        setScreen("round-summary")
+      }
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [isHost, selectedIndex, opponentPickedIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isHost, isSolo, selectedIndex, opponentPickedIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Guest: auto-advance to match-end after seeing reveal
+  // Round summary → next picking auto-advance
   useEffect(() => {
-    if (isHost) return
-    if (screen !== "reveal" || !roundResult) return
-
+    if (screen !== "round-summary") return
     const timer = setTimeout(() => {
-      setMatchWinner(roundResult.winner)
-      setScreen("match-end")
-    }, 5000)
-
+      setScreen("picking")
+    }, 3000)
     return () => clearTimeout(timer)
-  }, [isHost, screen, roundResult])
+  }, [screen])
 
   const handleOpponentJoined = useCallback(() => {
     setScreen("card-building")
@@ -269,6 +318,10 @@ function App() {
       setHand(newHand)
       saveHand(newHand)
 
+      // Save to permanent collection
+      saveToCollection(data)
+      setCollection((prev) => prev.some((c) => c.id === data.id) ? prev : [...prev, data])
+
       snapLog("CARD_RECEIVED", { id: data.id, name: data.name })
     } catch (err) {
       const msg = err instanceof Error ? (err.message || "Failed to generate card") : (err != null ? String(err) : "Failed to generate card")
@@ -309,13 +362,29 @@ function App() {
     }
   }
 
+  function handleAddFromCollection(cardToAdd: Card) {
+    if (hand.length >= HAND_SIZE) return
+    if (hand.some((c) => c.id === cardToAdd.id)) return
+    const newHand = [...hand, cardToAdd]
+    setHand(newHand)
+    saveHand(newHand)
+    snapLog("CARD_ADDED_FROM_COLLECTION", { id: cardToAdd.id, name: cardToAdd.name })
+  }
+
+  function handleRemoveFromHand(index: number) {
+    const newHand = hand.filter((_, i) => i !== index)
+    setHand(newHand)
+    saveHand(newHand)
+  }
+
   function handleHandReady() {
     setHandReady(true)
+    const ms = createMatchState()
+    setMatchState(ms)
 
     if (isSolo) {
-      // Solo mode: generate opponent and go straight to picking
-      const opp = generateSoloOpponent()
-      setOpponentCards([opp])
+      const opponents = generateSoloOpponents(HAND_SIZE)
+      setOpponentCards(opponents)
       setOpponentReady(true)
       setTimeout(() => setScreen("picking"), 500)
       snapLog("SOLO_HAND_READY", { cardCount: hand.length })
@@ -334,9 +403,14 @@ function App() {
     setSelectedIndex(index)
 
     if (isSolo) {
-      // Solo: opponent always picks index 0, resolve immediately
-      setOpponentPickedIndex(0)
-      snapLog("SOLO_CARD_PICKED", { index })
+      // Solo: opponent picks randomly from available cards
+      const oppAvailable = getAvailableIndices(
+        opponentCards.length,
+        matchState?.usedIndicesB ?? [],
+      )
+      const oppPick = soloPickCard(oppAvailable)
+      setOpponentPickedIndex(oppPick)
+      snapLog("SOLO_CARD_PICKED", { index, oppPick })
     } else {
       gameChannel.broadcast({
         type: "CARD_PICKED",
@@ -364,6 +438,7 @@ function App() {
     setOpponentPickedIndex(null)
     setRoundResult(null)
     setMatchWinner(null)
+    setMatchState(null)
     setCard(null)
     setPreviewUrl(null)
     setGeminiBlob(null)
@@ -380,6 +455,32 @@ function App() {
     snapLog("PLAY_AGAIN")
   }
 
+  function handleRematch() {
+    // Clean up preview URL
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+
+    // Reset match state but keep connection and collection
+    clearHand()
+    setHand([])
+    setHandReady(false)
+    setOpponentCards([])
+    setOpponentReady(false)
+    setSelectedIndex(null)
+    setOpponentPickedIndex(null)
+    setRoundResult(null)
+    setMatchWinner(null)
+    setMatchState(null)
+    setCard(null)
+    setPreviewUrl(null)
+    setGeminiBlob(null)
+    setCardBlob(null)
+    setLoading(false)
+    setError(null)
+
+    setScreen("card-building")
+    snapLog("REMATCH")
+  }
+
   function handleReset() {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(null)
@@ -394,11 +495,10 @@ function App() {
     }
   }
 
-  const hasCapture =
-    geminiBlob !== null && cardBlob !== null && previewUrl !== null
-
   const isBattleScreen =
-    screen === "picking" || screen === "reveal" || screen === "match-end"
+    screen === "picking" || screen === "reveal" || screen === "round-summary" || screen === "match-end"
+
+  const myUsedIndices = matchState?.usedIndicesA ?? []
 
   return (
     <Box
@@ -484,7 +584,7 @@ function App() {
             right={{ base: "4", lg: "6" }}
             gap="2"
           >
-            {hand.length > 0 && (
+            {collection.length > 0 && (
               <Button
                 size="md"
                 variant="outline"
@@ -517,7 +617,7 @@ function App() {
 
       {/* My Cards — browse saved cards */}
       {screen === "my-cards" && (
-        <MyCards cards={hand} onBack={() => setScreen("lobby")} />
+        <MyCards cards={collection} onBack={() => setScreen("lobby")} />
       )}
 
       {/* Guest joining — auto-join from URL or modal code entry */}
@@ -530,100 +630,24 @@ function App() {
 
       {/* Card building screen */}
       {screen === "card-building" && (
-        <>
-          {hasCapture ? (
-            <VStack gap="4" p="5" align="center" w="full" maxW="400px">
-              {card ? (
-                <>
-                  <CardBattle card={card} aiImageUrl={aiImageUrl} aiGenerating={aiImageState === "generating"} />
-
-                  {/* Ready to Battle button */}
-                  {!handReady ? (
-                    <Button
-                      size="lg"
-                      colorPalette="orange"
-                      w="full"
-                      maxW="320px"
-                      fontFamily="'Cinzel', Georgia, serif"
-                      fontWeight="700"
-                      letterSpacing="0.05em"
-                      onClick={handleHandReady}
-                    >
-                      Ready to Battle!
-                    </Button>
-                  ) : (
-                    <HStack gap="3">
-                      <Spinner size="sm" color="accent" />
-                      <Text color="fg.muted" fontWeight="500" fontSize="lg">
-                        {opponentReady
-                          ? "Both ready! Starting battle..."
-                          : "Waiting for opponent\u2019s card..."}
-                      </Text>
-                    </HStack>
-                  )}
-                </>
-              ) : loading ? (
-                <>
-                  <Image
-                    src={previewUrl}
-                    alt="Captured photo"
-                    w="full"
-                    borderRadius="xl"
-                    border="2px solid"
-                    borderColor="accent"
-                    objectFit="cover"
-                    aspectRatio="1/1"
-                    shadow="0 0 20px rgba(242, 116, 5, 0.2)"
-                  />
-                  <HStack gap="3">
-                    <Spinner size="sm" color="accent" />
-                    <Text color="accent" fontWeight="500" fontSize="lg">
-                      Generating card...
-                    </Text>
-                  </HStack>
-                </>
-              ) : error ? (
-                <>
-                  <Image
-                    src={previewUrl}
-                    alt="Captured photo"
-                    w="full"
-                    borderRadius="xl"
-                    border="2px solid"
-                    borderColor="border"
-                    objectFit="cover"
-                    aspectRatio="1/1"
-                    shadow="0 0 20px rgba(242, 116, 5, 0.1)"
-                  />
-                  <ErrorTap message={error} />
-                  <Button
-                    size="lg"
-                    colorPalette="orange"
-                    w="full"
-                    maxW="320px"
-                    onClick={handleRetry}
-                  >
-                    Retry
-                  </Button>
-                </>
-              ) : null}
-              {!handReady && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  colorPalette="teal"
-                  w="full"
-                  maxW="320px"
-                  onClick={handleReset}
-                >
-                  Start Over
-                </Button>
-              )}
-            </VStack>
-          ) : (
-            <CameraCapture onCapture={handleCapture} />
-          )}
-        </>
+        <HandBuilder
+          hand={hand}
+          collection={collection}
+          latestCard={card}
+          isGenerating={loading}
+          generatingPreviewUrl={previewUrl}
+          generatingError={error}
+          aiImageUrl={aiImageUrl}
+          aiGenerating={aiImageState === "generating"}
+          handReady={handReady}
+          opponentReady={opponentReady}
+          onCapture={handleCapture}
+          onRetry={handleRetry}
+          onAddFromCollection={handleAddFromCollection}
+          onRemoveFromHand={handleRemoveFromHand}
+          onReady={handleHandReady}
+          onReset={handleReset}
+        />
       )}
 
       {/* Battle screens */}
@@ -634,7 +658,9 @@ function App() {
               ? "PICKING"
               : screen === "reveal"
                 ? "REVEAL"
-                : "MATCH_END"
+                : screen === "round-summary"
+                  ? "ROUND_SUMMARY"
+                  : "MATCH_END"
           }
           myCards={hand}
           selectedIndex={selectedIndex}
@@ -644,6 +670,12 @@ function App() {
           isHost={isHost}
           onPickCard={handlePickCard}
           onPlayAgain={handlePlayAgain}
+          onRematch={handleRematch}
+          scoreA={matchState?.scoreA ?? 0}
+          scoreB={matchState?.scoreB ?? 0}
+          currentRound={matchState?.currentRound ?? 1}
+          usedIndices={myUsedIndices}
+          allRounds={matchState?.rounds ?? []}
         />
       )}
     </Box>

@@ -50,9 +50,7 @@ export default function MyCards({ cards, onBack }: MyCardsProps) {
               position="relative"
               overflow="visible"
             >
-              <Box transform="scale(0.55)" transformOrigin="top left">
-                <CardBattle card={card} />
-              </Box>
+              <CardBattle card={card} width={154} height={220} />
             </Box>
           ))}
         </SimpleGrid>

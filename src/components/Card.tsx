@@ -106,8 +106,8 @@ const KEYFRAMES_CSS = `
   100% { opacity: 0; }
 }
 @keyframes cardSummonGlow {
-  0%   { box-shadow: 0 0 40px 15px var(--glow-color), 0 0 80px 30px var(--glow-color); }
-  100% { box-shadow: 0 0 12px 2px var(--glow-color), 0 0 25px 5px var(--glow-color); }
+  0%   { box-shadow: 0 0 20px 8px var(--glow-color), 0 0 40px 15px var(--glow-color); }
+  100% { box-shadow: 0 0 8px 2px var(--glow-color), 0 0 16px 4px var(--glow-color); }
 }
 @keyframes aiImageFadeIn {
   0%   { opacity: 0; }
@@ -125,16 +125,20 @@ function StatCircle({
   value,
   color,
   label,
+  ratio = 1,
 }: {
   value: number
   color: string
   label: string
+  ratio?: number
 }) {
+  const size = `${Math.round(32 * ratio)}px`
+  const font = `${Math.max(8, Math.round(11 * ratio))}px`
   return (
     <Tip label={`${label}: ${value}`}>
       <Box
-        w="32px"
-        h="32px"
+        w={size}
+        h={size}
         borderRadius="full"
         bg={color}
         display="flex"
@@ -145,7 +149,7 @@ function StatCircle({
         boxShadow={`0 0 6px ${color}`}
         cursor="default"
       >
-        <Text fontSize="11px" fontWeight="800" color="white" lineHeight="1">
+        <Text fontSize={font} fontWeight="800" color="white" lineHeight="1">
           {value}
         </Text>
       </Box>
@@ -159,24 +163,47 @@ interface CardBattleProps {
   card: Card
   aiImageUrl?: string | null
   aiGenerating?: boolean
+  width?: number   // default 280
+  height?: number  // default 400
 }
 
-export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattleProps) {
+export default function CardBattle({ card, aiImageUrl, aiGenerating, width, height }: CardBattleProps) {
   const theme = ELEMENT_THEMES[card.element]
   const elementSrc = ELEMENT_IMAGE[card.element]
+
+  const w = width ?? 280
+  const h = height ?? 400
+  const r = w / 280 // ratio for scaling internal dimensions
+
+  const nameFontSize = `${Math.max(7, Math.round(14 * r))}px`
+  const quoteFontSize = `${Math.max(5, Math.round(9 * r))}px`
+  const iconW = `${Math.round(50 * r)}px`
+  const iconH = `${Math.round(60 * r)}px`
+  const iconMt = `${Math.round(-25 * r)}px`
+  const iconMr = `${Math.round(-10 * r)}px`
+  const innerMargin = `${Math.round(6 * r)}px`
+  const innerRadius = `${Math.round(12 * r)}px`
+  const headerPx = `${Math.round(10 * r)}px`
+  const headerPt = `${Math.round(8 * r)}px`
+  const headerPb = `${Math.round(4 * r)}px`
+  const illustrationMx = `${Math.round(8 * r)}px`
+  const illustrationMb = `${Math.round(6 * r)}px`
+  const statsPb = `${Math.round(8 * r)}px`
+  const statsGap = `${Math.round(12 * r)}px`
+  const quotePx = `${Math.round(10 * r)}px`
+  const quoteMb = `${Math.round(4 * r)}px`
 
   return (
     <>
       <style>{KEYFRAMES_CSS}</style>
 
       <Box
-        w="280px"
-        h="400px"
+        w={`${w}px`}
+        h={`${h}px`}
         position="relative"
-        borderRadius="16px"
+        borderRadius={`${Math.max(10, Math.round(16 * r))}px`}
         border="3px solid"
         borderColor={theme.border}
-        // visible: l'icône élément peut dépasser le cadre (même emplacement, non rognée)
         overflow="visible"
         flexShrink={0}
         style={
@@ -193,7 +220,7 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
           position="absolute"
           inset="0"
           bg="white"
-          borderRadius="13px"
+          borderRadius={`${Math.max(7, Math.round(13 * r))}px`}
           pointerEvents="none"
           zIndex={10}
           style={{ animation: "cardSummonFlash 400ms ease-out forwards" }}
@@ -201,10 +228,10 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
 
         {/* Inner gold-bordered frame */}
         <Box
-          m="6px"
+          m={innerMargin}
           border="1px solid #b8860b"
-          borderRadius="12px"
-          h="calc(100% - 12px)"
+          borderRadius={innerRadius}
+          h={`calc(100% - ${Math.round(12 * r)}px)`}
           display="flex"
           flexDirection="column"
           overflow="visible"
@@ -213,15 +240,15 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
           <HStack
             justify="space-between"
             align="flex-start"
-            px="10px"
-            pt="8px"
-            pb="4px"
+            px={headerPx}
+            pt={headerPt}
+            pb={headerPb}
             gap="2"
           >
             <Text
               fontFamily="'Cinzel', Georgia, serif"
               fontWeight="700"
-              fontSize="14px"
+              fontSize={nameFontSize}
               color="#e8f0ed"
               lineHeight="1.2"
               textShadow="0 1px 4px rgba(0,0,0,0.6)"
@@ -236,13 +263,13 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
               <Image
                 src={elementSrc}
                 alt={card.element}
-                w="50px"
-                h="60px"
+                w={iconW}
+                h={iconH}
                 style={{
                   flexShrink: 0,
                   cursor: "default",
-                  marginTop: "-25px",
-                  marginRight: "-10px",
+                  marginTop: iconMt,
+                  marginRight: iconMr,
                   filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.55)) drop-shadow(0 6px 14px rgba(0,0,0,0.35))",
                 }}
               />
@@ -251,11 +278,11 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
 
           {/* Illustration */}
           <Box
-            mx="8px"
-            mb="6px"
+            mx={illustrationMx}
+            mb={illustrationMb}
             flex="1"
             border="1px solid #b8860b"
-            borderRadius="6px"
+            borderRadius={`${Math.max(4, Math.round(6 * r))}px`}
             overflow="hidden"
             bg="#000"
             position="relative"
@@ -311,17 +338,17 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
                 </Box>
                 <Box
                   position="absolute"
-                  bottom="6px"
+                  bottom={`${Math.round(6 * r)}px`}
                   left="50%"
                   transform="translateX(-50%)"
                   bg="rgba(0,0,0,0.7)"
                   backdropFilter="blur(4px)"
                   borderRadius="full"
-                  px="10px"
-                  py="3px"
+                  px={`${Math.round(10 * r)}px`}
+                  py={`${Math.round(3 * r)}px`}
                   display="flex"
                   alignItems="center"
-                  gap="6px"
+                  gap={`${Math.round(6 * r)}px`}
                   zIndex={3}
                 >
                   <Box
@@ -335,7 +362,7 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
                     }}
                   />
                   <Text
-                    fontSize="9px"
+                    fontSize={`${Math.max(7, Math.round(9 * r))}px`}
                     fontWeight="600"
                     color="#ccc"
                     whiteSpace="nowrap"
@@ -349,19 +376,19 @@ export default function CardBattle({ card, aiImageUrl, aiGenerating }: CardBattl
           </Box>
 
           {/* Stats row */}
-          <HStack justify="center" gap="12px" pb="8px" px="10px">
-            <StatCircle value={card.attack} color="#cc2222" label="Attack" />
-            <StatCircle value={card.defense} color="#2266cc" label="Defense" />
-            <StatCircle value={card.hp} color="#22aa44" label="HP" />
+          <HStack justify="center" gap={statsGap} pb={statsPb} px={headerPx}>
+            <StatCircle value={card.attack} color="#cc2222" label="Attack" ratio={r} />
+            <StatCircle value={card.defense} color="#2266cc" label="Defense" ratio={r} />
+            <StatCircle value={card.hp} color="#22aa44" label="HP" ratio={r} />
           </HStack>
 
           {/* Quote */}
           <Text
-            px="10px"
-            mb="4px"
+            px={quotePx}
+            mb={quoteMb}
             fontFamily="'Cinzel', Georgia, serif"
             fontStyle="italic"
-            fontSize="9px"
+            fontSize={quoteFontSize}
             color="#7a9990"
             textAlign="right"
             lineHeight="1.4"
