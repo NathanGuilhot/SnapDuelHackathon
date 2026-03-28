@@ -456,7 +456,7 @@ function ResolutionPhase({
 
 function MatchEndPhase({
   roundResult,
-  matchWinner,
+  matchWinner: _matchWinner,
   isHost,
   onPlayAgain,
 }: {

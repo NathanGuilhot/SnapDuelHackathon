@@ -3,11 +3,13 @@ import { useConnection, useDataChannel, usePeers } from "@fishjam-cloud/react-cl
 import { snapLog } from "../../shared/debug"
 import type { GameMessage, GameEnvelope, PeerMetadata } from "../../shared/types"
 
-type MessageHandler = (msg: GameMessage, from: string) => void
+type MessageHandlers = {
+  [K in GameMessage["type"]]?: (msg: Extract<GameMessage, { type: K }>, from: string) => void
+}
 
 interface UseGameChannelOptions {
   isHost: boolean
-  handlers?: Partial<Record<GameMessage["type"], MessageHandler>>
+  handlers?: MessageHandlers
 }
 
 interface UseGameChannelReturn {
@@ -59,7 +61,10 @@ export function useGameChannel(options: UseGameChannelOptions): UseGameChannelRe
         // Directed message filtering
         if (envelope.target && envelope.target !== localPeerIdRef.current) return
 
-        const handler = handlersRef.current?.[envelope.payload.type]
+        const type = envelope.payload.type
+        const handler = handlersRef.current?.[type] as
+          | ((msg: GameMessage, from: string) => void)
+          | undefined
         if (handler) {
           handler(envelope.payload, envelope.from)
         }

@@ -263,7 +263,7 @@ export default function CardBattle({ card }: CardBattleProps) {
             color="#7a9990"
             textAlign="right"
             lineHeight="1.4"
-            noOfLines={2}
+            lineClamp={2}
           >
             &ldquo;{card.quote}&rdquo;
           </Text>
