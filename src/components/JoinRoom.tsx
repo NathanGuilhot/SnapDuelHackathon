@@ -73,7 +73,7 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
         setJoining(false)
       }
     },
-    [getSandboxPeerToken, joinRoom, playerName],
+    [getSandboxPeerToken, joinRoom, leaveRoom, playerName],
   )
 
   // Auto-join when initialCode is provided
