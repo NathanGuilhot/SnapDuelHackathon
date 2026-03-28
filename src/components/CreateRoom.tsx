@@ -37,7 +37,7 @@ export default function CreateRoom({
   onJoinWithCode,
 }: CreateRoomProps) {
   const { getSandboxPeerToken } = useSandbox()
-  const { joinRoom, peerStatus } = useConnection()
+  const { joinRoom, leaveRoom, peerStatus } = useConnection()
   const { remotePeers } = usePeers()
 
   const [roomCode, setRoomCode] = useState<string | null>(null)
@@ -75,34 +75,31 @@ export default function CreateRoom({
     }
   }, [])
 
+  const createRoom = useCallback(async () => {
+    setError(null)
+    const code = generateRoomCode()
+    snapLog("ROOM_CREATE", { roomCode: code })
+
+    try {
+      leaveRoom()
+      await new Promise((r) => setTimeout(r, 50))
+      const token = await getSandboxPeerToken(code, "host", "conference")
+      const metadata: PeerMetadata = { name: "host", isHost: true }
+      await joinRoom({ peerToken: token, peerMetadata: metadata })
+      setRoomCode(code)
+      snapLog("ROOM_JOINED", { roomCode: code })
+    } catch (err) {
+      const msg = err instanceof Error
+        ? (err.message || "Connection failed — check your network and try again")
+        : (err != null ? String(err) : "Connection failed — check your network and try again")
+      setError(msg)
+      snapLog("ROOM_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus })
+    }
+  }, [getSandboxPeerToken, joinRoom, leaveRoom, peerStatus])
+
   // Auto-create room on mount
   useEffect(() => {
-    let cancelled = false
-
-    async function create() {
-      const code = generateRoomCode()
-      snapLog("ROOM_CREATE", { roomCode: code })
-
-      try {
-        const token = await getSandboxPeerToken(code, "host", "conference")
-        if (cancelled) return
-        const metadata: PeerMetadata = { name: "host", isHost: true }
-        await joinRoom({ peerToken: token, peerMetadata: metadata })
-        if (cancelled) return
-        setRoomCode(code)
-        snapLog("ROOM_JOINED", { roomCode: code })
-      } catch (err) {
-        if (cancelled) return
-        const msg = err instanceof Error
-          ? (err.message || "Connection failed — check your network and try again")
-          : (err != null ? String(err) : "Connection failed — check your network and try again")
-        setError(msg)
-        snapLog("ROOM_ERROR", { error: msg, rawType: typeof err, rawValue: String(err), peerStatus })
-      }
-    }
-
-    create()
-    return () => { cancelled = true }
+    createRoom()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generate QR code when shareable URL is available
@@ -127,14 +124,26 @@ export default function CreateRoom({
   if (!roomCode) {
     return (
       <VStack gap="6" p="5" align="center" w="full" maxW="400px">
-        <HStack gap="3">
-          <Spinner size="sm" color="accent" />
-          <Text color="accent" fontWeight="500" fontSize="lg">
-            Creating room...
-          </Text>
-        </HStack>
-
-        {error && <ErrorTap message={error} />}
+        {error ? (
+          <VStack gap="3" w="full" maxW="320px">
+            <ErrorTap message={error} />
+            <Button
+              size="lg"
+              colorPalette="orange"
+              w="full"
+              onClick={() => createRoom()}
+            >
+              Try Again
+            </Button>
+          </VStack>
+        ) : (
+          <HStack gap="3">
+            <Spinner size="sm" color="accent" />
+            <Text color="accent" fontWeight="500" fontSize="lg">
+              Creating room...
+            </Text>
+          </HStack>
+        )}
       </VStack>
     )
   }

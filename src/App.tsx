@@ -316,6 +316,15 @@ function App() {
     snapLog("BOTH_CONNECTED_TRANSITION", { isHost })
   }, [isHost])
 
+  const handleBackToLobby = useCallback(() => {
+    leaveRoom()
+    setJoinCode(null)
+    setIsHost(true)
+    setScreen("lobby")
+    window.history.replaceState({}, "", "/")
+    snapLog("BACK_TO_LOBBY")
+  }, [leaveRoom])
+
   async function generateCard(resized: Blob, cropped: Blob) {
     setLoading(true)
     setError(null)
@@ -706,6 +715,7 @@ function App() {
         <JoinRoom
           initialCode={joinCode ?? undefined}
           onBothConnected={handleBothConnected}
+          onBackToLobby={handleBackToLobby}
         />
       )}
 

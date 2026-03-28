@@ -36,9 +36,10 @@ function randomName(): string {
 interface JoinRoomProps {
   initialCode?: string
   onBothConnected: () => void
+  onBackToLobby?: () => void
 }
 
-export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps) {
+export default function JoinRoom({ initialCode, onBothConnected, onBackToLobby }: JoinRoomProps) {
   const { getSandboxPeerToken } = useSandbox()
   const { joinRoom, leaveRoom, peerStatus } = useConnection()
   const { remotePeers } = usePeers()
@@ -51,6 +52,8 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
   const joinAttempted = useRef(false)
   const peerStatusRef = useRef(peerStatus)
   peerStatusRef.current = peerStatus
+  const leaveRoomRef = useRef(leaveRoom)
+  leaveRoomRef.current = leaveRoom
 
   const codeValid = VALID_CODE.test(roomCode)
 
@@ -94,8 +97,9 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
     }
     return () => {
       joinAttempted.current = false
+      leaveRoomRef.current()
     }
-  }, [initialCode])
+  }, [initialCode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Watch for host presence
   useEffect(() => {
@@ -143,13 +147,12 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
         </Badge> */}
 
         {error ? (
-          <>
+          <VStack gap="3" w="full" maxW="320px">
             <ErrorTap message={error} />
             <Button
               size="lg"
               colorPalette="orange"
               w="full"
-              maxW="320px"
               onClick={() => {
                 joinAttempted.current = false
                 doJoin(initialCode)
@@ -157,14 +160,39 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
             >
               Try Again
             </Button>
-          </>
+            {onBackToLobby && (
+              <Button
+                size="lg"
+                variant="outline"
+                colorPalette="orange"
+                w="full"
+                onClick={onBackToLobby}
+              >
+                Back to Lobby
+              </Button>
+            )}
+          </VStack>
         ) : joined && remotePeers.length === 0 ? (
-          <HStack gap="3">
-            <Spinner size="sm" color="accent" />
-            <Text color="fg.muted" fontWeight="500" fontSize="lg">
-              Waiting for host...
-            </Text>
-          </HStack>
+          <VStack gap="4">
+            <HStack gap="3">
+              <Spinner size="sm" color="accent" />
+              <Text color="fg.muted" fontWeight="500" fontSize="lg">
+                Waiting for host...
+              </Text>
+            </HStack>
+            {onBackToLobby && (
+              <Button
+                size="lg"
+                variant="outline"
+                colorPalette="orange"
+                w="full"
+                maxW="320px"
+                onClick={onBackToLobby}
+              >
+                Back to Lobby
+              </Button>
+            )}
+          </VStack>
         ) : joining ? (
           <HStack gap="3">
             <Spinner size="sm" color="accent" />
@@ -258,19 +286,29 @@ export default function JoinRoom({ initialCode, onBothConnected }: JoinRoomProps
       )}
 
       {error && (
-        <>
+        <VStack gap="3" w="full" maxW="320px">
           <ErrorTap message={error} />
           <Button
             size="lg"
             variant="outline"
             colorPalette="orange"
             w="full"
-            maxW="320px"
             onClick={() => doJoin(roomCode)}
           >
             Try Again
           </Button>
-        </>
+          {onBackToLobby && (
+            <Button
+              size="lg"
+              variant="outline"
+              colorPalette="orange"
+              w="full"
+              onClick={onBackToLobby}
+            >
+              Back to Lobby
+            </Button>
+          )}
+        </VStack>
       )}
 
       {joined && remotePeers.length === 0 && (

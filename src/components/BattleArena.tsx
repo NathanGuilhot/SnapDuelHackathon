@@ -270,12 +270,6 @@ function CardSlot({
 
 /* ── FlipCard (3D reveal) ──────────────────────────────────────── */
 
-const ELEMENT_GLOW: Record<string, string> = {
-  fire: "rgba(255, 107, 0, 0.4)",
-  water: "rgba(0, 136, 255, 0.4)",
-  nature: "rgba(0, 204, 68, 0.4)",
-  neutral: "rgba(153, 51, 255, 0.4)",
-}
 
 function FlipCard({
   card,
@@ -292,7 +286,7 @@ function FlipCard({
 }) {
   const ratio = cardWidth / 280
   const borderRadius = `${Math.max(10, Math.round(16 * ratio))}px`
-  const glowColor = ELEMENT_GLOW[card.element] ?? ELEMENT_GLOW.neutral
+
 
   return (
     <Box w={`${cardWidth}px`} h={`${cardHeight}px`} style={{ perspective: "800px" }}>
