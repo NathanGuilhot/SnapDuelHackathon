@@ -160,7 +160,7 @@ export default function CameraCapture({ onCapture }: CameraCaptureProps) {
       ) : (
         <>
           <p className="camera-capture__prompt">
-            Snap any object. It becomes your weapon.
+            Take a picture of any object to start the duel.
           </p>
           <button
             className="camera-capture__btn camera-capture__btn--primary"
