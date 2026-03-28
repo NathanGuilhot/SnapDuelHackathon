@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import {
   Box,
   HStack,
+  Image,
   Portal,
   Text,
   TooltipArrow,
@@ -43,11 +44,16 @@ const ELEMENT_THEMES: Record<Element, ElementTheme> = {
   },
 }
 
-const ELEMENT_EMOJI: Record<Element, string> = {
-  fire: "\u{1F525}",
-  water: "\u{1F4A7}",
-  nature: "\u{1F33F}",
-  neutral: "⚪",
+import fireImg from "../assets/elements/fire.png"
+import waterImg from "../assets/elements/water.png"
+import natureImg from "../assets/elements/nature.png"
+import neutralImg from "../assets/elements/neutral.png"
+
+const ELEMENT_IMAGE: Record<Element, string> = {
+  fire: fireImg,
+  water: waterImg,
+  nature: natureImg,
+  neutral: neutralImg,
 }
 
 const ELEMENT_DESCRIPTION: Record<Element, string> = {
@@ -147,7 +153,7 @@ interface CardBattleProps {
 
 export default function CardBattle({ card }: CardBattleProps) {
   const theme = ELEMENT_THEMES[card.element]
-  const emoji = ELEMENT_EMOJI[card.element]
+  const elementSrc = ELEMENT_IMAGE[card.element]
 
   return (
     <>
@@ -160,7 +166,8 @@ export default function CardBattle({ card }: CardBattleProps) {
         borderRadius="16px"
         border="3px solid"
         borderColor={theme.border}
-        overflow="hidden"
+        // visible: l'icône élément peut dépasser le cadre (même emplacement, non rognée)
+        overflow="visible"
         flexShrink={0}
         style={
           {
@@ -190,7 +197,7 @@ export default function CardBattle({ card }: CardBattleProps) {
           h="calc(100% - 12px)"
           display="flex"
           flexDirection="column"
-          overflow="hidden"
+          overflow="visible"
         >
           {/* Header: name + element emoji */}
           <HStack
@@ -217,9 +224,19 @@ export default function CardBattle({ card }: CardBattleProps) {
               {card.name}
             </Text>
             <Tip label={ELEMENT_DESCRIPTION[card.element]}>
-              <Text fontSize="20px" lineHeight="1" flexShrink={0} cursor="default">
-                {emoji}
-              </Text>
+              <Image
+                src={elementSrc}
+                alt={card.element}
+                w="50px"
+                h="60px"
+                style={{
+                  flexShrink: 0,
+                  cursor: "default",
+                  marginTop: "-25px",
+                  marginRight: "-10px",
+                  filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.55)) drop-shadow(0 6px 14px rgba(0,0,0,0.35))",
+                }}
+              />
             </Tip>
           </HStack>
 

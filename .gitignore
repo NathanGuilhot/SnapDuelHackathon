@@ -27,3 +27,4 @@ dist-ssr
 uploads/*
 !uploads/.gitkeep
 .env
+*.png~
