@@ -8,19 +8,12 @@ import {
   Text,
   VStack,
   HStack,
-  Badge,
 } from "@chakra-ui/react"
 import CameraCapture from "./components/CameraCapture"
+import CardBattle from "./components/Card"
 import { preprocessImage, cropToSquare } from "./lib/imageProcessing"
 import { snapLog } from "../shared/debug.ts"
 import type { Card } from "../shared/types.ts"
-
-const ELEMENT_COLORS: Record<string, string> = {
-  fire: "orange",
-  water: "blue",
-  nature: "green",
-  neutral: "purple",
-}
 
 function App() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -140,53 +133,7 @@ function App() {
       {hasCapture ? (
         <VStack gap="4" p="5" align="center" w="full" maxW="400px">
           {card ? (
-            <>
-              <Image
-                src={card.imageUrl}
-                alt={card.name}
-                w="full"
-                borderRadius="xl"
-                border="2px solid"
-                borderColor="accent"
-                objectFit="cover"
-                aspectRatio="1/1"
-                shadow="0 0 20px rgba(242, 116, 5, 0.2)"
-              />
-              <VStack gap="2" w="full" align="center">
-                <HStack gap="3" align="baseline">
-                  <Text fontWeight="700" fontSize="2xl" color="fg.heading">
-                    {card.name}
-                  </Text>
-                  <Badge
-                    colorPalette={ELEMENT_COLORS[card.element]}
-                    size="lg"
-                    textTransform="capitalize"
-                  >
-                    {card.element}
-                  </Badge>
-                </HStack>
-                <HStack gap="4" w="full" justify="center">
-                  <Text fontSize="md" color="fg">
-                    ATK {card.attack}
-                  </Text>
-                  <Text fontSize="md" color="fg">
-                    DEF {card.defense}
-                  </Text>
-                  <Text fontSize="md" color="fg">
-                    HP {card.hp}
-                  </Text>
-                </HStack>
-                <Text
-                  fontStyle="italic"
-                  color="fg.muted"
-                  fontSize="sm"
-                  textAlign="center"
-                  fontFamily="heading"
-                >
-                  &ldquo;{card.quote}&rdquo;
-                </Text>
-              </VStack>
-            </>
+            <CardBattle card={card} />
           ) : loading ? (
             <>
               <Image
